@@ -8,6 +8,7 @@ import os,signal,sys
 import config
 from core.core import WavesSpreadBot
 import telegram_frontend.commands as commands
+import telegram_frontend.menu as menu
 import telegram_frontend.error as error
 
 """ 3th party modules """
@@ -23,15 +24,18 @@ def initialize():
 
     log.info('Initialize Telegram Bot...')
     # Create the Updater and pass it your bot's token.
+    bot = Bot(config.BOT_TOKEN)
     updater = Updater(config.BOT_TOKEN)
 
     updater.dispatcher.add_error_handler(error.handle)
 
     updater.dispatcher.add_handler(CommandHandler('help', commands.handle_help))
     updater.dispatcher.add_handler(CommandHandler('status', commands.handle_status))
+    updater.dispatcher.add_handler(CommandHandler('menu', commands.handle_menu))
     updater.dispatcher.add_handler(CommandHandler('start', commands.handle_start))
     updater.dispatcher.add_handler(CommandHandler('stop', commands.handle_stop))
 
+    updater.dispatcher.add_handler(CallbackQueryHandler(menu.handle))
 
     # Start the Bot
     log.info('Start polling...')
