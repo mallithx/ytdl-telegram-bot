@@ -13,18 +13,23 @@ import telegram_frontend.error as error
 
 """ 3th party modules """
 from telegram import *
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, RegexHandler
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 log = logging.getLogger(__name__)
 log.setLevel(config.LOG_LEVEL)
 
-def initialize():
+def message(bot, update):
+    log.warn('TRIGGER')
 
+def initialize():
     log.info('Initialize Telegram Bot...')
+
+    # Initialize Core
+    WavesSpreadBot.getInstance()
+
     # Create the Updater and pass it your bot's token.
-    bot = Bot(config.BOT_TOKEN)
     updater = Updater(config.BOT_TOKEN)
 
     updater.dispatcher.add_error_handler(error.handle)
@@ -35,7 +40,10 @@ def initialize():
     updater.dispatcher.add_handler(CommandHandler('start', commands.handle_start))
     updater.dispatcher.add_handler(CommandHandler('stop', commands.handle_stop))
 
-    updater.dispatcher.add_handler(CallbackQueryHandler(menu.handle))
+    # Workaround to handle menu button callbacks
+    updater.dispatcher.add_handler(RegexHandler('status', commands.handle_status))
+    updater.dispatcher.add_handler(RegexHandler('start', commands.handle_start))
+    updater.dispatcher.add_handler(RegexHandler('stop', commands.handle_stop))
 
     # Start the Bot
     log.info('Start polling...')

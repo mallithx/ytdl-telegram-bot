@@ -6,6 +6,9 @@ import logging
 """ Bot Token """
 BOT_TOKEN = '528642428:AAH3Y0jpzXXvJ8Pcv4itaRI5_DubWUja9rQ'
 
+""" General Settings """
+AUTO_START_WAVES_BOT = True
+
 """ Development """
 LOG_LEVEL = logging.DEBUG
 

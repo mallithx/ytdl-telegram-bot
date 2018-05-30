@@ -18,15 +18,19 @@ def handle_status(bot, update):
 
     wsb = WavesSpreadBot.getInstance()
 
-    update.message.reply_text('==========\n   Status   \n==========\n\nMore detailed status information will appear soon!\nStatus: {}'.format(wsb.getStatus()))
+    update.message.reply_text('Waves Spread Bot is <b>{}</b>\n\n{} : {}\n{} : {}'.format(
+                '\n ==> running' if wsb.getStatus() else 'not running',
+                'UP'.ljust(10, '.'), wsb.getTotalUpTime(),
+                'LAST'.ljust(10, '.'), wsb.getLastUpTime()
+                ), parse_mode=ParseMode.HTML)
 
 def handle_menu(bot, update):
     log.debug('Handeling incoming command: /menu')
 
-    keyboard = [[InlineKeyboardButton('Status')], [InlineKeyboardButton('Start'), InlineKeyboardButton('Stop')]]
+    keyboard = [[InlineKeyboardButton('status', callback_data='status')], [InlineKeyboardButton('start', callback_data='start')], [InlineKeyboardButton('stop', callback_data='stop')]]
     reply_markup = ReplyKeyboardMarkup(keyboard)
 
-    update.message.reply_text('Yür', reply_markup=reply_markup)
+    update.message.reply_text('Select an action:', reply_markup=reply_markup)
 
 def handle_start(bot, update):
     log.debug('Handeling incoming command /start')

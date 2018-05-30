@@ -14,10 +14,23 @@ from telegram import *
 log = logging.getLogger(__name__)
 log.setLevel(config.LOG_LEVEL)
 
-def handle(bot, update):
+def handle_button_press(bot, update):
     query = update.callback_query
 
-    log.info('Pressed Menubutton: {}'.format(query.data))
+    log.debug('Pressed Menubutton: {}'.format(query.data))
 
-    if query.data == 'Status' :
-        commands.handle_status(None, update)
+    update.message = query.message
+    
+    bot.edit_message_text(text="Running action: {}".format(query.data),
+                          chat_id=query.message.chat_id,
+                          message_id=query.message.message_id)
+
+
+    if query.data == 'status':
+        commands.handle_status(bot, update)
+    elif query.data == 'start':
+        commands.handle_start(bot, update)
+    elif query.data == 'stop':
+        commands.handle_stop(bot, update)
+    else:
+        commands.handle_help(bot, update)
