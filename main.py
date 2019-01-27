@@ -44,6 +44,12 @@ def handle_download(bot, update, chat_data):
     query = update.callback_query
     data = query.data
 
+    if 'format_urls' not in chat_data:
+        bot.send_message(chat_id=query.message.chat.id, 
+            text='<strong>Error: </strong><i>Please enter url again.</i>', 
+            parse_mode=ParseMode.HTML)
+        return
+
     format_ = chat_data['format_urls'][int(data)][0]
     size = chat_data['format_urls'][int(data)][1]
     url = chat_data['format_urls'][int(data)][2]
