@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 """ Standard modules """
 import logging
-import os,signal,sys
-import urllib.request
+import subprocess
+import signal
 import json
-import base64
 
 """ Local modules """
 import config
@@ -19,7 +18,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 log = logging.getLogger(__name__)
 log.setLevel(config.LOG_LEVEL)
 
-URL, Format = (1, 2)
 
 def initialize():
     log.info('Initialize Telegram Bot...')
@@ -28,8 +26,8 @@ def initialize():
     updater = Updater(config.BOT_TOKEN)
     updater.dispatcher.add_error_handler(handle_error)
 
-    updater.dispatcher.add_handler(RegexHandler('^.*$', handle_url, pass_chat_data=True))
-    updater.dispatcher.add_handler(CallbackQueryHandler(handle_download, pass_chat_data=True))
+    updater.dispatcher.add_handler(RegexHandler('^mp4 .*$', handle_conversion_mp4))
+    updater.dispatcher.add_handler(RegexHandler('^.*$', handle_link_only))
 
     # Start the Bot
     log.info('Start polling...')
@@ -40,56 +38,44 @@ def initialize():
     log.info('Initialize Telegram Bot...DONE. switching to idle mode.')
     updater.idle()
 
-def handle_download(bot, update, chat_data):
-    query = update.callback_query
-    data = query.data
+def handle_conversion_mp4(bot, update):
+    update.message.reply_text(text='mp4 conversion is not supported yet');
 
-    if 'format_urls' not in chat_data:
-        bot.send_message(chat_id=query.message.chat.id, 
-            text='<strong>Error: </strong><i>Please enter url again.</i>', 
-            parse_mode=ParseMode.HTML)
-        return
-
-    format_ = chat_data['format_urls'][int(data)][0]
-    size = chat_data['format_urls'][int(data)][1]
-    url = chat_data['format_urls'][int(data)][2]
-
-    bot.send_message(chat_id=query.message.chat.id, 
-        text='<strong>Download: </strong><i>%s (%s)</i> -> <a href="%s">here</a>' % (format_, size, url), 
-        parse_mode=ParseMode.HTML)
-
-
-def handle_url(bot, update, chat_data):
-    url = update.message.text 
-
-    log.debug('handle_url chat_data: {}'.format(chat_data))
+def handle_link_only(bot, update):
+    url = update.message.text
+    log.info('Start handling url: %s' % url)
 
     try:
-        resp = urllib.request.urlopen('http://localhost:3000/info?url=%s' % url).read()
-        data = json.loads(resp)
+        process = subprocess.check_output(['youtube-dl', url, '--id', '--print-json', '-s'])
+        data = json.loads(process.decode('utf8'))
 
-        chat_data['format_urls'] = []
+        title = data['title']
+        filename = data['_filename']
+        formats = data['formats']
+        targetFormat = None
 
-        button_list = []
-        for i, f in enumerate(data['formats']):
-            url = f['url']
-            formatName = f['type']
-            formatSize = f['size'] if 'size' in f else f['audioBitrate']
-            chat_data['format_urls'].append((formatName, formatSize, url))
-            button_list.append([InlineKeyboardButton('[%s] %s' % (formatSize, formatName), callback_data=i)])
-   
-        reply_markup = InlineKeyboardMarkup(button_list)
+        # find audio format
+        for f in formats:
+            if 'audio only' in f['format']:
+                targetFormat = f
+
+        log.info('Downloaded %s' % filename)
+        log.debug('Target format: \n{}'.format(targetFormat))
 
         update.message.reply_text(
-            text='<strong>Title:</strong> %s\n<strong>Length:</strong> %s' % (data['title'], '00:00'),
-            parse_mode=ParseMode.HTML,
-            reply_markup=reply_markup)
+            text='<strong>%s\n --> </strong><a href="%s">%s</a>' % (title, targetFormat['url'], targetFormat['format']), 
+            parse_mode=ParseMode.HTML)   
+
+        return
+
+    except Exception as e:  
+        reply_error(update.message, e)
+        return
 
 
-    except urllib.request.HTTPError as e:
-        log.error(e)
-        update.message.reply_text(text='<strong>Not a valid url!</strong>\n%s' % str(e), parse_mode=ParseMode.HTML)
-
+def reply_error(msg, e):
+    log.error('%s: %s' % (type(3).__name__, e))
+    msg.reply_text('<strong>Oops! Something went wrong</strong>\n<i>Maybe due to invalid url?</i>', parse_mode=ParseMode.HTML)
 
 def handle_error(bot, update, error):
     log.warning('Update "%s" caused error "%s"', update, error)
