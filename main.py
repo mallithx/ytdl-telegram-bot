@@ -58,6 +58,10 @@ def handle_link_only(bot, update):
         for f in formats:
             if 'audio only' in f['format']:
                 targetFormat = f
+                continue
+
+        if not targetFormat:
+            raise Exception('No "audio only" formats available.')
 
         log.info('Downloaded %s' % filename)
         log.debug('Target format: \n{}'.format(targetFormat))
@@ -75,7 +79,11 @@ def handle_link_only(bot, update):
 
 def reply_error(msg, e):
     log.error('%s: %s' % (type(3).__name__, e))
-    msg.reply_text('<strong>Oops! Something went wrong</strong>\n<i>Maybe due to invalid url?</i>', parse_mode=ParseMode.HTML)
+
+    if hasattr(e, 'returncode') and e.returncode:
+        e = 'Maybe due to invalid url?'
+
+    msg.reply_text('<strong>Oops! Something went wrong</strong>\n<i>%s</i>' % e, parse_mode=ParseMode.HTML)
 
 def handle_error(bot, update, error):
     log.warning('Update "%s" caused error "%s"', update, error)
