@@ -50,13 +50,16 @@ def handle_shared_url(bot, update, chat_data):
         process = subprocess.check_output(['youtube-dl', url, '--print-json', '-f bestaudio', '--id'])
         data = json.loads(process.decode('utf8'))
 
-        title = data['title']
-        filename = '%s.%s' % (data['id'], data['ext']) # button data is limited to 64 bytes
 
-        log.debug('filename: %s' % filename)
+        _id = data['id']
+        title = data['title']
+        uploader = data['uploader']
+        ext = data['ext']
+        filename = '%s.%s' % (_id, ext) # button data is limited to 64 bytes
+
 
         update.message.reply_text(
-            text='<strong>%s</strong>\n<i>Select option:</i>' % (title), 
+            text='<strong>%s</strong>\n<i>uploaded by %s</i>' % (title, uploader), 
             parse_mode=ParseMode.HTML,
             reply_markup=create_keyboard_markup(filename))   
 
@@ -68,13 +71,21 @@ def handle_shared_url(bot, update, chat_data):
 
 
 def handle_provide_download(bot, update, chat_data):
-    chat_id = update.callback_query.message.chat.id
-    filename = update.callback_query.data
+    query = update.callback_query
+    chat_id = query.message.chat.id
+    filename = query.data
 
-    bot.send_message(chat_id=chat_id, text='<i>preparing file download ...</i>', parse_mode=ParseMode.HTML)
+    # remove download btn after click
+    bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id)
+
+    # display prepare message
+    msg_prepare = bot.send_message(chat_id=chat_id, text='<i>preparing file download ...</i>', parse_mode=ParseMode.HTML)
 
     bot.send_audio(chat_id=chat_id, audio=open(filename, 'rb'), timeout=1000)
     log.debug('send done')
+
+    # remove prepare message
+    bot.delete_message(chat_id=chat_id, message_id=msg_prepare.message_id)
 
     process = subprocess.check_output(['rm', '-f', filename])
     log.debug('delete done')
