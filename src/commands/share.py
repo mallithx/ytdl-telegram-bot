@@ -47,18 +47,11 @@ def handle_shared_url(bot, update, chat_data):
     chat_data = dict()
 
     try:
-        process = subprocess.check_output(['youtube-dl', url, '--id', '--print-json'])
+        process = subprocess.check_output(['youtube-dl', url, '--print-json', '-f bestaudio', '-o%(title)s.%(ext)s'])
         data = json.loads(process.decode('utf8'))
 
         title = data['title']
-        filename = data['_filename']
-        formats = data['formats']
-
-        chat_data = dict()
-        chat_data['filename'] = filename
-
-        log.debug('chat_data - uh: {}'.format(chat_data))
-
+        filename = '%s.%s' % (data['title'], data['ext'])
 
         update.message.reply_text(
             text='<strong>%s</strong>\n<i>Select option:</i>' % (title), 
@@ -72,16 +65,15 @@ def handle_shared_url(bot, update, chat_data):
         return
 
 
-def handle_link_query_callback(bot, update, chat_data):
+def handle_provide_download(bot, update, chat_data):
     chat_id = update.callback_query.message.chat.id
-    
     filename = update.callback_query.data
-    log.debug(filename)
-    log.debug('chat_data - qh: {}'.format(chat_data))
 
     bot.send_message(chat_id=chat_id, text='<i>preparing file download ...</i>', parse_mode=ParseMode.HTML)
+
     bot.send_audio(chat_id=chat_id, audio=open(filename, 'rb'), timeout=1000)
     log.debug('send done')
+    
     process = subprocess.check_output(['rm', '-f', filename])
     log.debug('delete done')
 
