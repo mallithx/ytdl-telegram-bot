@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 """ Standard modules """
 import logging
-import subprocess
-import signal
-import json
 
 """ Local modules """
 import config
@@ -18,10 +15,15 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 log = logging.getLogger(__name__)
 log.setLevel(config.LOG_LEVEL)
 
-def handle_start(bot, update, chat_data):
-    log.debug('chat_data 1:\n{}'.format(chat_data))
+class PleaseWaitMessage:
 
-    update.message.reply_text(
-        text='<strong>How to start?</strong>\nshare a link !', 
-        parse_mode=ParseMode.HTML)
+    def __init__(self, bot, chat_id):
+        self.bot = bot
+        self.chat_id = chat_id
+        self.msg = None
 
+    def send(self):
+        self.msg = self.bot.send_message(chat_id=self.chat_id, text='<i>... please wait ...</i>', parse_mode=ParseMode.HTML)
+
+    def revoke(self):
+        self.bot.delete_message(chat_id=self.chat_id, message_id=self.msg.message_id)
