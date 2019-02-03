@@ -28,7 +28,7 @@ def initialize():
 
     updater.dispatcher.add_handler(CommandHandler('start', handle_start))
 
-    updater.dispatcher.add_handler(RegexHandler('^[^/].*$', handle_shared_link, pass_chat_data=True))
+    updater.dispatcher.add_handler(RegexHandler('^.*$', handle_shared_link, pass_chat_data=True))
     updater.dispatcher.add_handler(CallbackQueryHandler(handle_provide_download, pass_chat_data=True))
 
     # Start the Bot

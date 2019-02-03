@@ -45,10 +45,11 @@ def handle_shared_link(bot, update, chat_data):
         chat_data.update({'track': track})
 
         # reply keyboard
-        keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton('Download .mp3', callback_data='mp3')],
-                [InlineKeyboardButton('Download .wav', callback_data='wav')],
-                [InlineKeyboardButton('Download .flac', callback_data='flac')]])
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton('Download .mp3', callback_data='mp3'), InlineKeyboardButton('Download .wav', callback_data='wav')],
+                [InlineKeyboardButton('Download .flac', callback_data='flac'), InlineKeyboardButton('Stream', callback_data='stream')],
+                [InlineKeyboardButton('Cancle', callback_data='cancle')]])
 
         please_wait.revoke()
         update.message.reply_text(
@@ -75,6 +76,17 @@ def handle_provide_download(bot, update, chat_data):
 
     # remove download btn after click
     bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id)
+
+    # check if cancled
+    if ext == 'cancle':
+        log.info('Cancle op from chat_id=%s' % (chat_id))
+        bot.send_message(text='<i>cancled</i>', chat_id=chat_id, parse_mode=ParseMode.HTML)
+        return
+
+    # check if stream
+    if ext == 'stream':
+        bot.send_message(text='<i>stream not implemented yet</i>', chat_id=chat_id, parse_mode=ParseMode.HTML)
+        return
 
     # display prepare message
     please_wait = PleaseWaitMessage(bot, chat_id)
