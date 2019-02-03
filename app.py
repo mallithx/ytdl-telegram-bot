@@ -27,7 +27,7 @@ def initialize():
     updater = Updater(config.BOT_TOKEN)
     updater.dispatcher.add_error_handler(handle_error)
 
-    updater.dispatcher.add_handler(CommandHandler('start', handle_start))
+    updater.dispatcher.add_handler(CommandHandler('start', handle_start, pass_chat_data=True))
 
     updater.dispatcher.add_handler(RegexHandler('^[^/].*$', handle_shared_url, pass_chat_data=True))
     updater.dispatcher.add_handler(CallbackQueryHandler(handle_provide_download, pass_chat_data=True))

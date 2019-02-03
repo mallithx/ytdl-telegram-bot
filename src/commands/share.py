@@ -5,6 +5,7 @@ import logging
 import subprocess
 import signal
 import json
+import re
 
 """ Local modules """
 import config
@@ -18,36 +19,16 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 log = logging.getLogger(__name__)
 log.setLevel(config.LOG_LEVEL)
 
-def create_keyboard_markup(filename):
-    keyboard = []
-    """
-    col_counter = 0
-    row = []
-    for f in formats:
-        
-        if f['ext'] == 'webm':
-            continue
-
-        row.append(InlineKeyboardButton(f['ext'], callback_data=f['ext']))
-        col_counter += 1
-
-        if col_counter == 3:
-            keyboard.append(row)
-            row = []
-            col_counter = 0"""
-    
-    keyboard.append([InlineKeyboardButton('Download Audio', callback_data=filename)])
-
-    return InlineKeyboardMarkup(keyboard)
+EXT = 'mp3'
 
 def handle_shared_url(bot, update, chat_data):
     url = update.message.text
     log.info('Start handling url: %s' % url)
 
-    chat_data = dict()
+
 
     try:
-        process = subprocess.check_output(['youtube-dl', url, '--print-json', '-f bestaudio', '--id'])
+        process = subprocess.check_output(['youtube-dl', url, '--print-json', '-f bestaudio', '-x', '--audio-format', EXT, '--id'])
         data = json.loads(process.decode('utf8'))
 
 
@@ -55,13 +36,18 @@ def handle_shared_url(bot, update, chat_data):
         title = data['title']
         uploader = data['uploader']
         ext = data['ext']
-        filename = '%s.%s' % (_id, ext) # button data is limited to 64 bytes
+        filename = '%s.%s' % (_id, EXT) # button data is limited to 64 bytes
+
+        chat_data.update({'filename': filename})
+
+        log.debug('chat_data 0:\n{}'.format(chat_data))
 
 
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton('Download Audio', callback_data=filename)]])
         update.message.reply_text(
             text='<strong>%s</strong>\n<i>uploaded by %s</i>' % (title, uploader), 
             parse_mode=ParseMode.HTML,
-            reply_markup=create_keyboard_markup(filename))   
+            reply_markup=keyboard)
 
         return
 
@@ -75,6 +61,8 @@ def handle_provide_download(bot, update, chat_data):
     chat_id = query.message.chat.id
     filename = query.data
 
+    log.debug('chat_data 1:\n{}'.format(chat_data))
+
     # remove download btn after click
     bot.edit_message_reply_markup(query.message.chat.id, query.message.message_id)
 
@@ -82,13 +70,13 @@ def handle_provide_download(bot, update, chat_data):
     msg_prepare = bot.send_message(chat_id=chat_id, text='<i>preparing file download ...</i>', parse_mode=ParseMode.HTML)
 
     bot.send_audio(chat_id=chat_id, audio=open(filename, 'rb'), timeout=1000)
-    log.debug('send done')
+    log.info('send "%s" done' % filename)
 
     # remove prepare message
     bot.delete_message(chat_id=chat_id, message_id=msg_prepare.message_id)
 
     process = subprocess.check_output(['rm', '-f', filename])
-    log.debug('delete done')
+    log.info('delete "%s" done' % filename)
 
     
 
