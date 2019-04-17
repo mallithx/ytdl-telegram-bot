@@ -1,11 +1,14 @@
 import youtube_dl
 
+opts = {
+    'format': 'bestaudio/best',
+    'outtmpl': '-'
+}
 
-ydl = youtube_dl.YoutubeDL()
-with ydl:
+with youtube_dl.YoutubeDL(opts) as ydl:
     try:
         info = ydl.download(['https://www.youtube.com/watch?v=zk1QNXTGldQ'])
     except youtube_dl.utils.DownloadError as e:
-        printf('Failed to download file')
+        print('Failed to download file')
 
-print('Terminated with: ', info)
+print()

@@ -21,8 +21,11 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 log = logging.getLogger(__name__)
 
 
+
 def handle_cancel(update, context):
     return ConversationHandler.END
+
+
 
 def handle_start(bot, update):
     """ Handle /start command """
@@ -30,16 +33,17 @@ def handle_start(bot, update):
         text='<strong>How to start?</strong>\nshare a link !', 
         parse_mode=ParseMode.HTML)
 
+
+
 def handle_incoming_url(bot, update, chat_data):
     """ Handle incoming url """
     url = update.message.text
     log.info('Incoming url "%s"' % url)
 
     # load audio information
-    ydl = youtube_dl.YoutubeDL()
-    with ydl:
+    with youtube_dl.YoutubeDL() as ydl:
         try:
-            info = ydl.extract_info(url, download=False)
+            info_dict = ydl.extract_info(url, download=False)
         except youtube_dl.utils.DownloadError as e:
             update.message.reply_text( 
                 '<strong>Error:</strong> <i>Given url is invalid or from an unsupported source.</i>', parse_mode=ParseMode.HTML)
@@ -48,10 +52,12 @@ def handle_incoming_url(bot, update, chat_data):
     # TODO: create format keyboard
 
     update.message.reply_text('<strong>%s</strong>\n<i>uploader: %s\nduration: %s\n---------------------\nChoose format:</i>' % \
-        (info['title'], info['uploader'], info['duration']), parse_mode=ParseMode.HTML)
+        (info_dict['title'], info_dict['uploader'], info_dict['duration']), parse_mode=ParseMode.HTML)
 
-    chat_data['url'] = url
+    chat_data['info_dict'] = info_dict
     return CHOOSE_FORMAT
+
+
 
 def handle_format(bot, update, chat_data):
     """ Handle format """
@@ -62,6 +68,8 @@ def handle_format(bot, update, chat_data):
     chat_data['format'] = _format
     return QUICK_OR_ADVANCED
 
+
+
 def handle_invalid_format(bot, update, chat_data):
     """ Handle invalid format """
     _format = update.message.text
@@ -69,16 +77,42 @@ def handle_invalid_format(bot, update, chat_data):
     update.message.reply_text('<strong>Error:</strong> <i>%s is not a valid format.</i>' % _format, parse_mode=ParseMode.HTML)
     return CHOOSE_FORMAT
 
+
+
 def handle_quick_download(bot, update, chat_data):
-    update.message.reply_text('quick')
+    chat_id = update.message.chat_id
+    info_dict = chat_data['info_dict']
+
+    opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': 'tmp/%(id)s'
+    }
+
+    # load audio information
+    with youtube_dl.YoutubeDL(opts) as ydl:
+        try:
+            info = ydl.download([info_dict['webpage_url']])
+        except youtube_dl.utils.DownloadError as e:
+            update.message.reply_text( 
+                '<strong>Error:</strong> <i>Failed to download audio from url.</i>', parse_mode=ParseMode.HTML)
+            return ConversationHandler.END
+
+    with open('tmp/' + info_dict['id'], 'rb') as fd:
+        bot.send_audio(chat_id=chat_id, audio=fd, timeout=180)
+
     return ConversationHandler.END
+
+
 
 def handle_advanced_download(bot, update, chat_data):
     update.message.reply_text('Advanced download not implemented yet.')
     return ConversationHandler.END
 
+
+
 def handle_error(bot, update, error):
     log.warning('Update "%s" caused error "%s"', update, error)
+
 
 
 QUICK_OR_ADVANCED, CHOOSE_FORMAT = range(2)
@@ -117,6 +151,9 @@ def initialize():
     # SIGTERM or SIGABRT
     log.info('Initialize Telegram Bot...DONE. switching to idle mode.')
     updater.idle()
+
+
+
 
 def on_exit(sig, func=None):
     print("exit handler triggered")

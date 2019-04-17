@@ -1,4 +1,5 @@
-example_track_info.xml
+# tmp file directory
+tmp/
 
 # Config File
 config.py
