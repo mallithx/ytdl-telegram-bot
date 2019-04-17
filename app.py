@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """ Standard modules """
 import logging
-import subprocess
 import signal
+import sys
 import json
 import re
 from io import BytesIO
@@ -14,78 +14,12 @@ import config
 """ 3th party modules """
 from telegram import *
 from telegram.ext import * 
+import youtube_dl
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=config.LOG_LEVEL)
 log = logging.getLogger(__name__)
 
-class PleaseWaitMessage:
-
-    def __init__(self, bot, chat_id):
-        self.bot = bot
-        self.chat_id = chat_id
-        self.msg = None
-
-    def send(self):
-        self.msg = self.bot.send_message(chat_id=self.chat_id, text='<i>... please wait ...</i>', parse_mode=ParseMode.HTML)
-
-    def revoke(self):
-        self.bot.delete_message(chat_id=self.chat_id, message_id=self.msg.message_id)
-
-class AudioFile:
-
-    def __init__(self, url):
-        self.url = url
-        self.info = None
-        self.binary_data = None
-
-    def check_url(self):
-        try:
-            resp = subprocess.check_output(['youtube-dl', \
-                '-f bestaudio', \
-                '-sq', # simulate + quiet \ 
-                self.url])
-
-            return True
-        except subprocess.CalledProcessError as e:
-            log.error(e)
-            return False
-
-    def get_info(self):
-        resp = subprocess.check_output(['youtube-dl', \
-            '--dump-single-json', \
-            '-f bestaudio', \
-            self.url])
-
-        self.info = json.loads(resp)
-    
-    def download(self):
-        if self.binary_data is not None:
-            print('Skipping download because binary_data is already present.')
-            return
-
-        resp = subprocess.check_output(['youtube-dl', \
-            '-f mp3', \
-            '-q', # quiet \ 
-            '-o', '-', # stdout \
-            self.url])
-
-        self.binary_data = resp
-
-    def cut_audio(self, start=0, end=0):
-        p = subprocess.Popen(['ffmpeg', \
-            '-i', 'pipe:0', \
-            '-ss', start, # quiet \ 
-            '-to', end, \
-            '-f', 'mp3', \
-            '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        print('Binary data on stdin of ffmpeg: %s' % self.binary_data[:50])
-        stdout = p.communicate(input=BytesIO(self.binary_data).read())[0]
-        self.binary_data = stdout
-        print('Binary data on stdout of ffmpeg: %s' % self.binary_data[:50])
-
-    def html_preview(self):
-        return '<strong>%s</strong>\n<i>uploaded by %s</> (%s)' % (self.info['title'], self.info['uploader'], self.info['duration'])
 
 def handle_cancel(update, context):
     return ConversationHandler.END
@@ -99,158 +33,55 @@ def handle_start(bot, update):
 def handle_incoming_url(bot, update, chat_data):
     """ Handle incoming url """
     url = update.message.text
-    chat_id = update.message.chat.id
     log.info('Incoming url "%s"' % url)
 
-    # display wait message
-    please_wait = PleaseWaitMessage(bot, chat_id)
-    please_wait.send()
+    # load audio information
+    ydl = youtube_dl.YoutubeDL()
+    with ydl:
+        try:
+            info = ydl.extract_info(url, download=False)
+        except youtube_dl.utils.DownloadError as e:
+            update.message.reply_text( 
+                '<strong>Error:</strong> <i>Given url is invalid or from an unsupported source.</i>', parse_mode=ParseMode.HTML)
+            return ConversationHandler.END
 
-    audio = AudioFile(url)
+    # TODO: create format keyboard
 
-    if not audio.check_url():
-        update.message.reply_text(
-                text='<strong>Error:</strong> <i>%s</i> is not a valid url.' % url, 
-                    parse_mode=ParseMode.HTML)
-        please_wait.revoke()
-        return ConversationHandler.END
-    
+    update.message.reply_text('<strong>%s</strong>\n<i>uploader: %s\nduration: %s\n---------------------\nChoose format:</i>' % \
+        (info['title'], info['uploader'], info['duration']), parse_mode=ParseMode.HTML)
 
-    audio.get_info()
-    chat_data.update({'audio': audio})
+    chat_data['url'] = url
+    return CHOOSE_FORMAT
 
-    please_wait.revoke()
-    # reply keyboard
-    keyboard = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton('Download', callback_data='download')],
-            [InlineKeyboardButton('Settings', callback_data='settings')],
-            [InlineKeyboardButton('Cancle', callback_data='cancle')]
-        ])
+def handle_format(bot, update, chat_data):
+    """ Handle format """
+    _format = update.message.text
 
-    update.message.reply_text(
-        text=audio.html_preview(), 
-        parse_mode=ParseMode.HTML,
-        reply_markup=keyboard)
+    update.message.reply_text('Choose quick or advanced')
 
-    return MENU
+    chat_data['format'] = _format
+    return QUICK_OR_ADVANCED
 
-def handle_settings(bot, update, chat_data):
-    """ Handle menu """
-    query = update.callback_query
-    chat_id = query.message.chat.id
+def handle_invalid_format(bot, update, chat_data):
+    """ Handle invalid format """
+    _format = update.message.text
 
-    cmd = query.data
+    update.message.reply_text('<strong>Error:</strong> <i>%s is not a valid format.</i>' % _format, parse_mode=ParseMode.HTML)
+    return CHOOSE_FORMAT
 
-    if cmd == 'back':
-        keyboard = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton('Download', callback_data='download')],
-            [InlineKeyboardButton('Settings', callback_data='settings')],
-            [InlineKeyboardButton('Cancle', callback_data='cancle')]
-        ])
+def handle_quick_download(bot, update, chat_data):
+    update.message.reply_text('quick')
+    return ConversationHandler.END
 
-        bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=query.message.message_id,
-            reply_markup=keyboard)
-
-        return MENU
-
-    if cmd == 'cut':
-        bot.send_message(text='Enter in format: hh:mm:ss-hh:mm:ss', chat_id=chat_id)
-
-        return SETTINGS_CUT
-
-    else:
-        bot.send_message(text='<strong>Error: </strong> unknown command "%s"' % cmd, 
-                chat_id=chat_id, parse_mode=ParseMode.HTML)
-
-        return ConversationHandler.END
-
-def handle_settings_cut(bot, update, chat_data):
-    cut = update.message.text
-    chat_id = update.message.chat.id
-
-    if re.match('[0-5][0-9]:[0-5][0-9]:[0-5][0-9]-[0-5][0-9]:[0-5][0-9]:[0-5][0-9]', cut) is None:
-        bot.send_message(text='%s does not match the required format' % cut, chat_id=chat_id)
-        return SETTINGS_CUT
-
-    cut = cut.split('-')
-
-    audio = chat_data['audio']
-    audio.download()
-    audio.cut_audio(start=cut[0], end=cut[1])
-
-    keyboard = InlineKeyboardMarkup(
-    [
-        [InlineKeyboardButton('Download', callback_data='download')],
-        [InlineKeyboardButton('Settings', callback_data='settings')],
-        [InlineKeyboardButton('Cancle', callback_data='cancle')]
-    ])
-
-    update.message.reply_text(text='again?', reply_markup=keyboard)
-
-    return MENU
-
-def handle_menu(bot, update, chat_data):
-    """ Handle menu """
-    query = update.callback_query
-    chat_id = query.message.chat.id
-
-    cmd = query.data
-
-    # remove download btn after click
-    bot.edit_message_reply_markup(chat_id, query.message.message_id)
-    
-    if cmd == 'cancle':
-        return ConversationHandler.END
-
-    elif cmd == 'download':
-        # display wait message
-        please_wait = PleaseWaitMessage(bot, chat_id)
-        please_wait.send()
-
-        audio = chat_data['audio']
-        audio.download()
-
-        bot.send_audio(chat_id=chat_id, 
-                audio=BytesIO(audio.binary_data), 
-                title=audio.info['title'],
-                performer=audio.info['uploader'],
-                thumb=audio.info['thumbnail'],
-                timeout=1000)
-
-        please_wait.revoke()
-
-        return ConversationHandler.END
-
-    elif cmd == 'settings':
-        
-        keyboard = InlineKeyboardMarkup(
-        [
-            [InlineKeyboardButton('Cut', callback_data='cut')],
-            [InlineKeyboardButton('Go back', callback_data='back')],
-        ])
-
-        bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=query.message.message_id,
-            reply_markup=keyboard)
-
-        return SETTINGS
-    
-    else:
-        bot.send_message(text='<strong>Error: </strong> unknown command "%s"' % cmd, 
-                chat_id=chat_id, parse_mode=ParseMode.HTML)
-
-        return ConversationHandler.END
+def handle_advanced_download(bot, update, chat_data):
+    update.message.reply_text('Advanced download not implemented yet.')
+    return ConversationHandler.END
 
 def handle_error(bot, update, error):
     log.warning('Update "%s" caused error "%s"', update, error)
 
 
-MENU, SETTINGS, SETTINGS_CUT = range(3)
+QUICK_OR_ADVANCED, CHOOSE_FORMAT = range(2)
 
 def initialize():
     log.info('Initialize Telegram Bot...')
@@ -264,12 +95,15 @@ def initialize():
         entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
 
         states={
-            MENU: [CallbackQueryHandler(handle_menu, pass_chat_data=True)],
-            SETTINGS: [CallbackQueryHandler(handle_settings, pass_chat_data=True)],
-            SETTINGS_CUT: [MessageHandler(Filters.all, handle_settings_cut, pass_chat_data=True)]
+            CHOOSE_FORMAT: [RegexHandler('(bestaudio|best)', handle_format, pass_chat_data=True), 
+                            MessageHandler(Filters.all, handle_invalid_format, pass_chat_data=True)],
+
+            QUICK_OR_ADVANCED: [RegexHandler('quick', handle_quick_download, pass_chat_data=True),
+                                RegexHandler('advanced', handle_advanced_download, pass_chat_data=True)]
         },
 
-        fallbacks=[CommandHandler('cancel', handle_cancel)]
+        fallbacks=[CommandHandler('cancel', handle_cancel)],
+        run_async_timeout=999
     )
 
     updater.dispatcher.add_handler(conv_handler)
