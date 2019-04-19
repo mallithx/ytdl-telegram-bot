@@ -8,14 +8,21 @@ import json
 import re
 from io import BytesIO
 
-""" Local modules """
-import config
-
 """ 3th party modules """
 from telegram import *
 from telegram.ext import * 
 import youtube_dl
 
+
+# verify that config.py exists
+try:
+    import config
+except ImportError as e:
+    print('Error: No config.py file present. See config_template.py for further instructions.')
+    sys.exit()
+
+
+# setup logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=config.LOG_LEVEL)
 log = logging.getLogger(__name__)
