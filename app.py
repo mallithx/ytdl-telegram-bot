@@ -5,7 +5,7 @@ import logging
 import signal
 import sys
 import json
-import re
+import os
 from io import BytesIO
 
 """ 3th party modules """
@@ -98,18 +98,31 @@ def handle_quick_download(bot, update, chat_data):
     # load audio information
     with youtube_dl.YoutubeDL(opts) as ydl:
         try:
-            info = ydl.download([info_dict['webpage_url']])
+            ydl.download([info_dict['webpage_url']])
+            filename = 'tmp/' + info_dict['id']
+            log.info('Downloaded file %s' % filename)
         except youtube_dl.utils.DownloadError as e:
             update.message.reply_text( 
                 '<strong>Error:</strong> <i>Failed to download audio from url.</i>', parse_mode=ParseMode.HTML)
             return ConversationHandler.END
 
-    with open('tmp/' + info_dict['id'], 'rb') as fd:
-        bot.send_audio(chat_id=chat_id, audio=fd, timeout=180,
-                title=info_dict['title'],
-                performer=info_dict['creator'],
-                duration=info_dict['duration'],
-                thumb=info_dict['thumbnail'])
+    metadata = {
+        'title': info_dict['title'] if 'title' in info_dict else '',
+        'performer': info_dict['creater'] if 'creater' in info_dict else info_dict['uploader'],
+        'duration': info_dict['duration'] if 'duration' in info_dict else '',
+        'thumb': info_dict['thumbnail'] if 'thumbnail' in info_dict else '',
+    }
+    
+
+    with open(filename, 'rb') as audio:
+        bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **metadata)
+
+    # remove audio file from disc
+    try:
+        os.remove(filename)
+        log.info('Removed file %s' % filename)
+    except:
+        log.error('Failed to remove file %s' % filename)
 
     return ConversationHandler.END
 
