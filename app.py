@@ -105,7 +105,11 @@ def handle_quick_download(bot, update, chat_data):
             return ConversationHandler.END
 
     with open('tmp/' + info_dict['id'], 'rb') as fd:
-        bot.send_audio(chat_id=chat_id, audio=fd, timeout=180)
+        bot.send_audio(chat_id=chat_id, audio=fd, timeout=180,
+                title=info_dict['title'],
+                performer=info_dict['creator'],
+                duration=info_dict['duration'],
+                thumb=info_dict['thumbnail'])
 
     return ConversationHandler.END
 
