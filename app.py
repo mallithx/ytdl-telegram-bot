@@ -67,7 +67,7 @@ def handle_incoming_url(bot, update, chat_data):
     # create format keyboard
     keyboard = [
         [InlineKeyboardButton("bestaudio", callback_data='bestaudio')],
-        [InlineKeyboardButton("mp4", callback_data='mp4'), InlineKeyboardButton("wav", callback_data='wav')],
+        [InlineKeyboardButton("mp3", callback_data='mp3'), InlineKeyboardButton("wav", callback_data='wav')],
         [InlineKeyboardButton("abort", callback_data='abort')]
     ]
 
@@ -80,7 +80,7 @@ def handle_incoming_url(bot, update, chat_data):
 
 
 
-def handle_format(bot, update, chat_data):
+def handle_menu_format(bot, update, chat_data):
     """ Handle format """
     msg = update.callback_query.message
     _format = query = update.callback_query.data
@@ -92,21 +92,17 @@ def handle_format(bot, update, chat_data):
         msg.reply_text('<i>aborted</i>', parse_mode=ParseMode.HTML)
         return ConversationHandler.END
 
-    if _format == 'mp4' or _format == 'wav':
-        msg.reply_text('<i>format %s not implemented yet</i>' % _format, parse_mode=ParseMode.HTML)
-        return ConversationHandler.END
-
     # create mode keyboard
     keyboard = [
-        [InlineKeyboardButton("advanced", callback_data='advanced'), InlineKeyboardButton("quick", callback_data='quick')]
+        [InlineKeyboardButton("cut", callback_data='cut'), InlineKeyboardButton("full length", callback_data='full')]
     ]
 
     bot.edit_message_reply_markup(chat_id=msg.chat.id, message_id=msg.message_id, reply_markup=InlineKeyboardMarkup(keyboard))
 
     chat_data['format'] = _format
-    return MENU_DOWNLOAD
+    return MENU_LENGTH
 
-def handle_download(bot, update, chat_data):
+def handle_menu_length(bot, update, chat_data):
     """ Handle download """
     msg = update.callback_query.message
     download_mode = query = update.callback_query.data
@@ -114,13 +110,13 @@ def handle_download(bot, update, chat_data):
     # remove keyboard
     bot.edit_message_reply_markup(chat_id=msg.chat.id, message_id=msg.message_id)
 
-    if download_mode == 'quick':
-        return handle_quick_download(bot, msg, chat_data)
-    if download_mode == 'advanced':
-        return handle_advanced_download(bot, msg, chat_data)
+    if download_mode == 'full':
+        return handle_full_length_download(bot, msg, chat_data)
+    if download_mode == 'cut':
+        return handle_cut_download(bot, msg, chat_data)
 
 
-def handle_quick_download(bot, msg, chat_data):
+def handle_full_length_download(bot, msg, chat_data):
     chat_id = msg.chat_id
     info_dict = chat_data['info_dict']
 
@@ -133,20 +129,33 @@ def handle_quick_download(bot, msg, chat_data):
         'forceid': True
     }
 
+    if chat_data['format'] != 'bestaudio':
+        # post processing required
+        opts.update({
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': chat_data['format'],
+                'preferredquality': '192',
+            }]
+        })
+
     # load audio information
     with youtube_dl.YoutubeDL(opts) as ydl:
         try:
+            log.debug('Downloading with opts:\n%r' % opts)
             ydl.download([info_dict['webpage_url']])
             filename = 'tmp/' + info_dict['id']
             log.info('Downloaded file %s' % filename)
         except youtube_dl.utils.DownloadError as e:
             msg.reply_text( 
-                '<strong>Error:</strong> <i>Failed to download audio from url.</i>', parse_mode=ParseMode.HTML)
+                '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['format'], parse_mode=ParseMode.HTML)
             return ConversationHandler.END
     
 
     with open(filename, 'rb') as audio:
+        log.info('Start transferring file %s to client' % filename)
         bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
+        log.info('Finished transferring file %s' % filename)
 
     # remove audio file from disc
     try:
@@ -159,8 +168,8 @@ def handle_quick_download(bot, msg, chat_data):
 
 
 
-def handle_advanced_download(bot, update, chat_data):
-    msg.reply_text('Advanced download not implemented yet.')
+def handle_cut_download(bot, msg, chat_data):
+    msg.reply_text('Cut download not implemented yet.')
     return ConversationHandler.END
 
 
@@ -170,7 +179,7 @@ def handle_error(bot, update, error):
 
 
 
-MENU_FORMAT, MENU_DOWNLOAD = range(2)
+MENU_FORMAT, MENU_LENGTH = range(2)
 
 def initialize():
     log.info('Initialize Telegram Bot...')
@@ -184,8 +193,8 @@ def initialize():
         entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
 
         states={
-            MENU_FORMAT: [CallbackQueryHandler(handle_format, pass_chat_data=True)],
-            MENU_DOWNLOAD: [CallbackQueryHandler(handle_download, pass_chat_data=True)]
+            MENU_FORMAT: [CallbackQueryHandler(handle_menu_format, pass_chat_data=True)],
+            MENU_LENGTH: [CallbackQueryHandler(handle_menu_length, pass_chat_data=True)]
         },
 
         fallbacks=[CommandHandler('cancel', handle_cancel)],
