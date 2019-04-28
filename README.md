@@ -18,3 +18,8 @@ pip install youtube_dl
 
 #### **3. Set Bot-Token**
 Modify **_config_template.py_** and rename to **_config.py_**.
+
+## Run Application
+```
+python3 app.py
+```
