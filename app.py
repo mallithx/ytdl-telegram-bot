@@ -25,7 +25,7 @@ except ImportError as e:
 
 # setup logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=config.LOG_LEVEL)
+                    level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
