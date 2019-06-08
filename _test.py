@@ -1,19 +1,12 @@
-import youtube_dl
+import re
 
-opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': 'tmp/%(id)s.%(ext)s',
-    'postprocessors': [
-        {
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }
-    ]
-}
+test_msg = 'BlaBla shared by soundcloud https://soundcloud.com/spazewindu/suser-geschmack-w-luk-the-dude appendix'
 
-with youtube_dl.YoutubeDL(opts) as ydl:
-    try:
-        info = ydl.download(['https://youtu.be/NPv6HlLs7CI'])
-    except youtube_dl.utils.DownloadError as e:
-        print('Failed to download file')
+url_schema = '(?P<url>https?://[^\s]+)'
+
+match = re.search(url_schema, test_msg)
+
+if match:
+    print(match.group('url'))
+else:
+    print('no url found')

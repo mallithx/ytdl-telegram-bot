@@ -7,6 +7,7 @@ import sys
 import json
 import datetime
 import os
+import re
 from io import BytesIO
 
 """ 3th party modules """
@@ -29,6 +30,17 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 log = logging.getLogger(__name__)
 
 
+def parse_url(msg):
+    """ Extract url from message """
+    match = re.search('(?P<url>https?://[^\s]+)', msg)
+
+    if match:
+        return match.group('url')
+    else:
+        log.error('No URL found in "%s"' % msg)
+
+    return msg
+
 
 def handle_cancel(update, context):
     return ConversationHandler.END
@@ -45,7 +57,7 @@ def handle_start(bot, update):
 
 def handle_incoming_url(bot, update, chat_data):
     """ Handle incoming url """
-    url = update.message.text
+    url = parse_url(update.message.text)
     log.info('Incoming url "%s"' % url)
 
     # load audio information
