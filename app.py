@@ -51,7 +51,7 @@ def handle_cancel(update, context):
 def handle_start(bot, update):
     """ Handle /start command """
     update.message.reply_text(
-        text='<strong>How to start?</strong>\nshare a link !', 
+        text='<strong>Audio Downloader</strong>\n<i>v2019.06.19</i>\n\n<strong>Share a link or enter a URL to download audio file.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
         parse_mode=ParseMode.HTML)
 
 def handle_version(bot, update):
