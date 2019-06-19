@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """ Standard modules """
+import subprocess
 import logging
 import signal
 import sys
@@ -53,6 +54,18 @@ def handle_start(bot, update):
         text='<strong>How to start?</strong>\nshare a link !', 
         parse_mode=ParseMode.HTML)
 
+def handle_version(bot, update):
+    """ Handle /version command """ 
+    try:
+        resp = subprocess.check_output(['youtube-dl', '--version'])
+        version = resp.decode('utf-8').strip()
+        update.message.reply_text(
+            text='<strong>youtube-dl:</strong> %s' % version,
+            parse_mode=ParseMode.HTML)
+    except subprocess.CalledProcessError as e:
+        update.message.reply_text(
+            text='<i>Failed to determine version of youtube-dl</i>\n%r' % e,
+            parse_mode=ParseMode.HTML)	 
 
 
 def handle_incoming_url(bot, update, chat_data):
@@ -200,6 +213,7 @@ def initialize():
     updater.dispatcher.add_error_handler(handle_error)
 
     updater.dispatcher.add_handler(CommandHandler('start', handle_start))
+    updater.dispatcher.add_handler(CommandHandler('version', handle_version))
 
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
