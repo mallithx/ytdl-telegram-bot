@@ -58,7 +58,7 @@ def handle_version(bot, update):
     """ Handle /version command """ 
     try:
         resp = subprocess.check_output(['youtube-dl', '--version'])
-        version = resp.decode('utf-8').strip()
+        version = resp.decode('utf-8')
         update.message.reply_text(
             text='<strong>youtube-dl:</strong> %s' % version,
             parse_mode=ParseMode.HTML)
@@ -66,6 +66,19 @@ def handle_version(bot, update):
         update.message.reply_text(
             text='<i>Failed to determine version of youtube-dl</i>\n%r' % e,
             parse_mode=ParseMode.HTML)	 
+
+def handle_update(bot, update):
+    """ Handle /update command """
+    try:
+        resp = subprocess.check_output(['pip', 'install', 'youtube-dl', '--upgrade'])
+        resp = resp.decode('utf-8')
+        update.message.reply_text(
+            text=resp,
+            parse_mode=ParseMode.HTML)
+    except subprocess.CalledProcessError as e:
+        update.message.reply_text(
+            text='<i>Failed to update youtube-dl</i>\n%r' % e,
+            parse_mode=ParseMode.HTML)
 
 
 def handle_incoming_url(bot, update, chat_data):
@@ -214,6 +227,7 @@ def initialize():
 
     updater.dispatcher.add_handler(CommandHandler('start', handle_start))
     updater.dispatcher.add_handler(CommandHandler('version', handle_version))
+    updater.dispatcher.add_handler(CommandHandler('update', handle_update))
 
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
