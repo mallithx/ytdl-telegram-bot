@@ -14,8 +14,12 @@ from io import BytesIO
 """ 3th party modules """
 from telegram import *
 from telegram.ext import * 
-import youtube_dl
 
+# verify that youtube-dl and python bindings are installed
+try:
+    import youtube_dl
+except ImportError as e:
+    print('Error: youtube-dl and/or youtube_dl python bindings are not installed')
 
 # verify that config.py exists
 try:
