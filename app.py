@@ -100,6 +100,7 @@ def handle_incoming_url(bot, update, chat_data):
             return ConversationHandler.END
 
     meta = chat_data['metadata'] = {
+        'url': url,
         'title': info_dict['title'] if 'title' in info_dict else '',
         'performer': info_dict['creater'] if 'creater' in info_dict else info_dict['uploader'],
         'duration': str(datetime.timedelta(seconds=int(info_dict['duration']))) if 'duration' in info_dict else 'unknown',
@@ -108,14 +109,17 @@ def handle_incoming_url(bot, update, chat_data):
 
     # create format keyboard
     keyboard = [
-        [InlineKeyboardButton("bestaudio", callback_data='bestaudio')],
         [InlineKeyboardButton("mp3", callback_data='mp3'), InlineKeyboardButton("wav", callback_data='wav')],
         [InlineKeyboardButton("abort", callback_data='abort')]
     ]
 
-    update.message.reply_text('<strong>%-70s</strong>\n<i>by %s</i>' % (meta['title'], meta['performer']), 
+    update.message.reply_text('<strong>%-70s</strong>\n<i>by %s</i>\n<i>%s</i>' % 
+            (meta['title'], meta['performer'], meta['url']), 
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard))
+
+    # remove initial message
+    bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
 
     chat_data['info_dict'] = info_dict
     return MENU_FORMAT
@@ -167,26 +171,24 @@ def handle_full_length_download(bot, msg, chat_data):
 
     opts = {
         'outtmpl': 'tmp/%(id)s',
-        'format': chat_data['format'],
+        'format': 'bestvideo+bestaudio/best',
         'forceid': True
     }
 
-    if chat_data['format'] != 'bestaudio':
-        # post processing required
-        opts.update({
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': chat_data['format'],
-                'preferredquality': '192',
-            }]
-        })
+    opts.update({
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': chat_data['format'],
+            'preferredquality': '192',
+        }]
+    })
 
     # load audio information
     with youtube_dl.YoutubeDL(opts) as ydl:
         try:
             log.debug('Downloading with opts:\n%r' % opts)
             ydl.download([info_dict['webpage_url']])
-            filename = 'tmp/' + info_dict['id']
+            filename = 'tmp/%s.%s' % (info_dict['id'], chat_data['format'])
             log.info('Downloaded file %s' % filename)
         except youtube_dl.utils.DownloadError as e:
             msg.reply_text( 
