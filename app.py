@@ -195,11 +195,15 @@ def handle_full_length_download(bot, msg, chat_data):
                 '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['format'], parse_mode=ParseMode.HTML)
             return ConversationHandler.END
     
-
-    with open(filename, 'rb') as audio:
-        log.info('Start transferring file %s to client' % filename)
-        bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
-        log.info('Finished transferring file %s' % filename)
+    try:
+        with open(filename, 'rb') as audio:
+            log.info('Start transferring file %s to client' % filename)
+            bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
+            log.info('Finished transferring file %s' % filename)
+    except FileNotFoundError as e:
+            msg.reply_text(
+                '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['format'], parse_mode=ParseMode.HTML)
+            return ConversationHandler.END
 
     # remove audio file from disc
     try:
