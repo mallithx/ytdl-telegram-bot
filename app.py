@@ -194,16 +194,25 @@ def handle_full_length_download(bot, msg, chat_data):
             msg.reply_text( 
                 '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['format'], parse_mode=ParseMode.HTML)
             return ConversationHandler.END
-    
-    try:
-        with open(filename, 'rb') as audio:
-            log.info('Start transferring file %s to client' % filename)
-            bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
-            log.info('Finished transferring file %s' % filename)
-    except FileNotFoundError as e:
-            msg.reply_text(
-                '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['format'], parse_mode=ParseMode.HTML)
-            return ConversationHandler.END
+
+
+    # check audio file size
+    size = os.path.getsize(filename)
+    log.info('File %s has a size of %d' % (filename, size))
+    if size >= 52428800: # 50MB
+         msg.reply_text(
+                '<strong>Error:</strong> <i>The audio file is too large (max. 50MB).</i>', parse_mode=ParseMode.HTML)
+    else:
+        # open audio file for transfer    
+        try:
+            with open(filename, 'rb') as audio:
+                log.info('Start transferring file %s to client' % filename)
+                bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
+                log.info('Finished transferring file %s' % filename)
+        except FileNotFoundError as e:
+                msg.reply_text(
+                    '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['format'], parse_mode=ParseMode.HTML)
+                return ConversationHandler.END
 
     # remove audio file from disc
     try:
