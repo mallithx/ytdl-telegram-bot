@@ -1,5 +1,7 @@
 # tmp file directory
 tmp/
+tmp_audio
+tmp_audio.*
 
 # Config File
 config.py
