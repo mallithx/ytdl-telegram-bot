@@ -167,10 +167,10 @@ def handle_full_length_download(bot, msg, chat_data):
     info_dict = chat_data['info_dict']
 
     if not 'format' in chat_data:
-        chat_data['format'] = 'bestaudio' # fallback format
+        chat_data['format'] = 'webm' # fallback format
 
     opts = {
-        'outtmpl': 'tmp/%(id)s',
+        'outtmpl': 'tmp_audio',
         'format': 'bestvideo+bestaudio/best',
         'forceid': True
     }
@@ -188,7 +188,7 @@ def handle_full_length_download(bot, msg, chat_data):
         try:
             log.debug('Downloading with opts:\n%r' % opts)
             ydl.download([info_dict['webpage_url']])
-            filename = 'tmp/%s.%s' % (info_dict['id'], chat_data['format'])
+            filename = 'tmp_audio.%s' % chat_data['format']
             log.info('Downloaded file %s' % filename)
         except youtube_dl.utils.DownloadError as e:
             msg.reply_text( 
