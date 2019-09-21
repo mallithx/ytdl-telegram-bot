@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """ Standard modules """
+from argparse import ArgumentParser
 import subprocess
 import logging
 import signal
 import sys
-import json
 import datetime
 import os
 import re
-from io import BytesIO
 
 """ 3th party modules """
 from telegram import *
@@ -31,8 +30,9 @@ except ImportError as e:
 
 # setup logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.DEBUG)
+                    level=logging.WARNING)
 log = logging.getLogger(__name__)
+youtube_dl_log = logging.getLogger('youtube-dl')
 
 
 def parse_url(msg):
@@ -84,14 +84,21 @@ def handle_update(bot, update):
             text='<i>Failed to update youtube-dl</i>\n%r' % e,
             parse_mode=ParseMode.HTML)
 
-
 def handle_incoming_url(bot, update, chat_data):
     """ Handle incoming url """
     url = parse_url(update.message.text)
     log.info('Incoming url "%s"' % url)
 
+    bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
+
+    opts = {
+        'logger': youtube_dl_log,
+        'verbose': True,
+        'format': 'bestvideo+bestaudio/best'
+    }
+
     # load audio information
-    with youtube_dl.YoutubeDL() as ydl:
+    with youtube_dl.YoutubeDL(opts) as ydl:
         try:
             info_dict = ydl.extract_info(url, download=False)
         except youtube_dl.utils.DownloadError as e:
@@ -160,6 +167,12 @@ def handle_menu_length(bot, update, chat_data):
         return handle_full_length_download(bot, msg, chat_data)
     if download_mode == 'cut':
         return handle_cut_download(bot, msg, chat_data)
+    else:
+        return ConversationHandler.END
+
+
+def progress_hook(d):
+    print('PROGRESS HOOK CALLED\n%r' % d)
 
 
 def handle_full_length_download(bot, msg, chat_data):
@@ -170,9 +183,12 @@ def handle_full_length_download(bot, msg, chat_data):
         chat_data['format'] = 'webm' # fallback format
 
     opts = {
+        'logger': youtube_dl_log,
         'outtmpl': 'tmp_audio',
+        'verbose': True,
         'format': 'bestvideo+bestaudio/best',
-        'forceid': True
+        'forceid': True,
+        'progress_hooks': [progress_hook]
     }
 
     opts.update({
@@ -241,7 +257,7 @@ MENU_FORMAT, MENU_LENGTH = range(2)
 def initialize():
     log.info('Initialize Telegram Bot...')
 
-    updater = Updater(config.BOT_TOKEN)
+    updater = Updater(token=config.BOT_TOKEN, workers=4)
     updater.dispatcher.add_error_handler(handle_error)
 
     updater.dispatcher.add_handler(CommandHandler('start', handle_start))
@@ -276,9 +292,28 @@ def initialize():
 
 
 def on_exit(sig, func=None):
-    print("exit handler triggered")
+    log.info('Exit application.')
     sys.exit(1)
 
 if __name__ == '__main__':
+    parser = ArgumentParser(description='Run telegram bot')
+    parser.add_argument('--verbose', action='store_true', dest='verbose', help='set loglevel to INFO')
+    parser.add_argument('-d', '--debug', action='store_true', dest='debug', help='set loglevel to DEBUG')
+
+    args = parser.parse_args()
+    print(args)
+
+    # logger initialization
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger('youtube-dl').setLevel(logging.INFO)
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.getLogger('youtube-dl').setLevel(logging.DEBUG)
+    else:
+        logging.getLogger().setLevel(logging.WARNING)
+        logging.getLogger('youtube-dl').setLevel(logging.WARNING)
+
+
     signal.signal(signal.SIGTERM, on_exit)
     initialize()
