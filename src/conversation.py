@@ -4,47 +4,23 @@
 from argparse import ArgumentParser
 import subprocess
 import logging
-import signal
-import sys
 import datetime
 import os
-import re
 
 """ 3th party modules """
 from telegram import *
-from telegram.ext import * 
+from telegram.ext import *
+import youtube_dl
 
-# verify that youtube-dl and python bindings are installed
-try:
-    import youtube_dl
-except ImportError as e:
-    print('Error: youtube-dl and/or youtube_dl python bindings are not installed')
+""" Local modules """
+import src.utils as utils
 
-# verify that config.py exists
-try:
-    import config
-except ImportError as e:
-    print('Error: No config.py file present. See config_template.py for further instructions.')
-    sys.exit()
-
-
-# setup logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.WARNING)
 log = logging.getLogger(__name__)
-youtube_dl_log = logging.getLogger('youtube-dl')
 
 
-def parse_url(msg):
-    """ Extract url from message """
-    match = re.search('(?P<url>https?://[^\s]+)', msg)
+# Conversation stages
+MENU_FORMAT, MENU_LENGTH = range(2)
 
-    if match:
-        return match.group('url')
-    else:
-        log.error('No URL found in "%s"' % msg)
-
-    return msg
 
 
 def handle_cancel(update, context):
@@ -52,47 +28,15 @@ def handle_cancel(update, context):
 
 
 
-def handle_start(bot, update):
-    """ Handle /start command """
-    update.message.reply_text(
-        text='<strong>Audio Downloader</strong>\n<i>v2019.06.19</i>\n\n<strong>Share a link or enter a URL to download audio file.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
-        parse_mode=ParseMode.HTML)
-
-def handle_version(bot, update):
-    """ Handle /version command """ 
-    try:
-        resp = subprocess.check_output(['youtube-dl', '--version'])
-        version = resp.decode('utf-8')
-        update.message.reply_text(
-            text='<strong>youtube-dl:</strong> %s' % version,
-            parse_mode=ParseMode.HTML)
-    except subprocess.CalledProcessError as e:
-        update.message.reply_text(
-            text='<i>Failed to determine version of youtube-dl</i>\n%r' % e,
-            parse_mode=ParseMode.HTML)	 
-
-def handle_update(bot, update):
-    """ Handle /update command """
-    try:
-        resp = subprocess.check_output(['pip', 'install', 'youtube-dl', '--upgrade'])
-        resp = resp.decode('utf-8')
-        update.message.reply_text(
-            text=resp,
-            parse_mode=ParseMode.HTML)
-    except subprocess.CalledProcessError as e:
-        update.message.reply_text(
-            text='<i>Failed to update youtube-dl</i>\n%r' % e,
-            parse_mode=ParseMode.HTML)
-
 def handle_incoming_url(bot, update, chat_data):
     """ Handle incoming url """
-    url = parse_url(update.message.text)
+    url = utils.parse_url(update.message.text)
     log.info('Incoming url "%s"' % url)
 
     bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
 
     opts = {
-        'logger': youtube_dl_log,
+        'logger': logging.getLogger('youtube-dl'),
         'verbose': True,
         'format': 'bestvideo+bestaudio/best'
     }
@@ -155,6 +99,8 @@ def handle_menu_format(bot, update, chat_data):
     chat_data['format'] = _format
     return MENU_LENGTH
 
+
+
 def handle_menu_length(bot, update, chat_data):
     """ Handle download """
     msg = update.callback_query.message
@@ -171,9 +117,6 @@ def handle_menu_length(bot, update, chat_data):
         return ConversationHandler.END
 
 
-def progress_hook(d):
-    print('PROGRESS HOOK CALLED\n%r' % d)
-
 
 def handle_full_length_download(bot, msg, chat_data):
     chat_id = msg.chat_id
@@ -183,7 +126,7 @@ def handle_full_length_download(bot, msg, chat_data):
         chat_data['format'] = 'webm' # fallback format
 
     opts = {
-        'logger': youtube_dl_log,
+        'logger': logging.getLogger('youtube-dl'),
         'outtmpl': 'tmp_audio',
         'verbose': True,
         'format': 'bestvideo+bestaudio/best',
@@ -247,73 +190,21 @@ def handle_cut_download(bot, msg, chat_data):
 
 
 
-def handle_error(bot, update, error):
-    log.warning('Update "%s" caused error "%s"', update, error)
-
-
-
-MENU_FORMAT, MENU_LENGTH = range(2)
-
-def initialize():
-    log.info('Initialize Telegram Bot...')
-
-    updater = Updater(token=config.BOT_TOKEN, workers=4)
-    updater.dispatcher.add_error_handler(handle_error)
-
-    updater.dispatcher.add_handler(CommandHandler('start', handle_start))
-    updater.dispatcher.add_handler(CommandHandler('version', handle_version))
-    updater.dispatcher.add_handler(CommandHandler('update', handle_update))
-
-    conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
-
-        states={
-            MENU_FORMAT: [CallbackQueryHandler(handle_menu_format, pass_chat_data=True)],
-            MENU_LENGTH: [CallbackQueryHandler(handle_menu_length, pass_chat_data=True)]
-        },
-
-        fallbacks=[CommandHandler('cancel', handle_cancel)],
-        run_async_timeout=999
-    )
-
-    updater.dispatcher.add_handler(conv_handler)
-
-
-    # Start the Bot
-    log.info('Start polling...')
-    updater.start_polling()
-
-    # Run the bot until the user presses Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT
-    log.info('Initialize Telegram Bot...DONE. switching to idle mode.')
-    updater.idle()
+def progress_hook(d):
+    log.info('PROGRESS HOOK CALLED\n%r' % d)
 
 
 
 
-def on_exit(sig, func=None):
-    log.info('Exit application.')
-    sys.exit(1)
+# Conversation handler definition
+handler = ConversationHandler(
+    entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
 
-if __name__ == '__main__':
-    parser = ArgumentParser(description='Run telegram bot')
-    parser.add_argument('--verbose', action='store_true', dest='verbose', help='set loglevel to INFO')
-    parser.add_argument('-d', '--debug', action='store_true', dest='debug', help='set loglevel to DEBUG')
+    states={
+        MENU_FORMAT: [CallbackQueryHandler(handle_menu_format, pass_chat_data=True)],
+        MENU_LENGTH: [CallbackQueryHandler(handle_menu_length, pass_chat_data=True)]
+    },
 
-    args = parser.parse_args()
-    print(args)
-
-    # logger initialization
-    if args.verbose:
-        logging.getLogger().setLevel(logging.INFO)
-        logging.getLogger('youtube-dl').setLevel(logging.INFO)
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger('youtube-dl').setLevel(logging.DEBUG)
-    else:
-        logging.getLogger().setLevel(logging.WARNING)
-        logging.getLogger('youtube-dl').setLevel(logging.WARNING)
-
-
-    signal.signal(signal.SIGTERM, on_exit)
-    initialize()
+    fallbacks=[CommandHandler('cancel', handle_cancel)],
+    run_async_timeout=999
+)

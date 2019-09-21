@@ -21,5 +21,5 @@ Modify **_config_template.py_** and rename to **_config.py_**.
 
 ## Run Application
 ```
-python3 app.py
+python3 run.py
 ```
