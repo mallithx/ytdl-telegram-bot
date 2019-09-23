@@ -8,9 +8,8 @@ from telegram import *
 from telegram.ext import * 
 
 """ Local modules """
-import src.error as error
-import src.commands as commands
-import src.conversation as conversation
+import src.error
+import src.handlers
 
 log = logging.getLogger(__name__)
 
@@ -33,13 +32,13 @@ class TelegramAudioDownloadBot:
 
     def __register_handlers(self):
         # Error handler
-        self.dispatcher.add_error_handler(error.handler)
+        self.dispatcher.add_error_handler(src.error.handler)
         # Command handlers
-        self.dispatcher.add_handler(CommandHandler('start', commands.handle_start))
-        self.dispatcher.add_handler(CommandHandler('version', commands.handle_version))
-        self.dispatcher.add_handler(CommandHandler('update', commands.handle_update))
+        self.dispatcher.add_handler(src.handlers.StartCommandHandler())
+        self.dispatcher.add_handler(src.handlers.VersionCommandHandler())
+        self.dispatcher.add_handler(src.handlers.UpdateCommandHandler())
         # *main* conversation handler
-        self.dispatcher.add_handler(conversation.handler)
+        self.dispatcher.add_handler(src.handlers.MainConversationHandler())
 
         log.info('Handler registration done. (success)')
     
