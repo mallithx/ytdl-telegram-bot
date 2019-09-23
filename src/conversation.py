@@ -26,6 +26,19 @@ CHOOSE_FORMAT, CHOOSE_LENGTH, CHECKOUT = range(3)
 def handle_cancel(update, context):
     return ConversationHandler.END
 
+def handle_abort(bot, update, last_message_id=None):
+
+    chat_id = update.message.chat_id
+    msg_id = update.message.message_id
+
+    bot.send_message(chat_id=chat_id, text='<i>aborted</i>', parse_mode=ParseMode.HTML)
+    bot.delete_message(chat_id=chat_id, message_id=msg_id)
+
+    if last_message_id:
+        bot.delete_message(chat_id=chat_id, message_id=last_message_id)
+
+    return ConversationHandler.END
+
 
 def handle_incoming_url(bot, update, chat_data):
     """ Handle incoming url """
@@ -77,7 +90,7 @@ def handle_format_selection(bot, update, chat_data):
     chat_id = msg.chat_id
 
 
-    if ext == 'abort': return ConversationHandler.END
+    if ext == 'abort': return handle_abort(bot, update, chat_data['last_message_id'])
 
     bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
     # remove previous messages
@@ -105,7 +118,7 @@ def handle_length_selection(bot, update, chat_data):
     msg = update.message
     chat_id = msg.chat_id
 
-    if length == 'abort': return ConversationHandler.END
+    if length == 'abort': return handle_abort(bot, update, chat_data['last_message_id'])
 
     bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
     # remove previous messages
@@ -136,7 +149,7 @@ def handle_checkout(bot, update, chat_data):
     msg = update.message
     chat_id = msg.chat_id
 
-    if confirmed == 'abort': return ConversationHandler.END
+    if confirmed == 'abort': return handle_abort(bot, update, chat_data['last_message_id'])
 
     # remove previous messages
     bot.delete_message(chat_id=chat_id, message_id=chat_data['last_message_id'])
