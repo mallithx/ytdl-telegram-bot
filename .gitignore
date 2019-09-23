@@ -1,3 +1,6 @@
+# ingore application .history file
+.history
+
 # tmp file directory
 tmp/
 tmp_audio

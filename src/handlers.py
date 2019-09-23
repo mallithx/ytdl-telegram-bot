@@ -13,6 +13,7 @@ import youtube_dl
 
 """ Local modules """
 import src.utils
+import src.history
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,25 @@ def UpdateCommandHandler():
                 parse_mode=ParseMode.HTML)
 
     return CommandHandler('update', handler)
+
+
+def HistoryCommandHandler():
+
+    def handler(bot, update):
+        history = src.history.get_history()
+
+        if history is None:
+            update.message.reply_text(
+                text='<i>No history available</i>',
+                parse_mode=ParseMode.HTML)
+        else:
+            update.message.reply_text(
+                text='<i>last %d downloads</i>\n%s' % (history.count('\n'), history),
+                parse_mode=ParseMode.HTML)
+
+
+    return CommandHandler('history', handler)
+
 
 
 def MainConversationHandler():
@@ -230,6 +250,8 @@ def MainConversationHandler():
                         '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['ext'], parse_mode=ParseMode.HTML)
                     return ConversationHandler.END
 
+        # add download to history
+        src.history.add_history(chat_data['url'])
         # remove please wait message
         bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
         # remove tmp file from disk

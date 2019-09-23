@@ -37,6 +37,7 @@ class TelegramAudioDownloadBot:
         self.dispatcher.add_handler(src.handlers.StartCommandHandler())
         self.dispatcher.add_handler(src.handlers.VersionCommandHandler())
         self.dispatcher.add_handler(src.handlers.UpdateCommandHandler())
+        self.dispatcher.add_handler(src.handlers.HistoryCommandHandler())
         # *main* conversation handler
         self.dispatcher.add_handler(src.handlers.MainConversationHandler())
 
