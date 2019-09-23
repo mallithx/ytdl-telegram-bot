@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 class TelegramAudioDownloadBot:
 
-    def __init__(self, token,):
+    def __init__(self, token):
         self.updater = Updater(token=token, workers=4)
         self.dispatcher = self.updater.dispatcher
 
