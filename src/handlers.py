@@ -99,6 +99,22 @@ def MainConversationHandler():
 
         return ConversationHandler.END
 
+    def handle_error(bot, update, last_message_id=None, error_message=None):
+
+        chat_id = update.message.chat_id
+        msg_id = update.message.message_id
+
+        if error_message is None:
+            error_message = 'An unspecified error occured! :('
+
+        bot.send_message(chat_id=chat_id, text='<strong>error:</strong> <i>%s</i>' % error_message, parse_mode=ParseMode.HTML)
+        #bot.delete_message(chat_id=chat_id, message_id=msg_id)
+
+        if last_message_id:
+            bot.delete_message(chat_id=chat_id, message_id=last_message_id)
+
+        return ConversationHandler.END
+
     def handle_cancel(update, context):
         return handle_abort(context.bot, update)
 
@@ -119,10 +135,8 @@ def MainConversationHandler():
                 'duration': str(datetime.timedelta(seconds=int(info_dict['duration']))) if 'duration' in info_dict else 'unknown',
                 'thumb': info_dict['thumbnail'] if 'thumbnail' in info_dict else '',
             }
-        except youtube_dl.utils.DownloadError as e:
-            update.message.reply_text( 
-                '<strong>Error:</strong> <i>Given url is invalid or from an unsupported source.</i>', parse_mode=ParseMode.HTML)
-            return ConversationHandler.END
+        except (youtube_dl.utils.DownloadError, youtube_dl.utils.ExtractorError) as e:
+            return handle_error(bot, update, error_message='given url is invalid or from an unsupported source')
 
 
         # create format keyboard
@@ -164,9 +178,12 @@ def MainConversationHandler():
             text='<strong>Format:</strong> <i>%s</i>' % ext, 
             parse_mode=ParseMode.HTML)
 
+        # create format keyboard
+        keyboard = [['abort', 'full']]
+
         reply = update.message.reply_text(
-            '<i>** select start/end ** { HH:MM:SS-HH:MM:SS }\n or /skip</i>', 
-            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardRemove())
+            '<i>** select start / end ** { HH:MM:SS-HH:MM:SS }</i>', 
+            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True))
 
         chat_data['ext'] = ext
         chat_data['last_message_id'] = reply.message_id
@@ -182,6 +199,10 @@ def MainConversationHandler():
         chat_id = msg.chat_id
 
         if length == 'abort': return handle_abort(bot, update, chat_data['last_message_id'])
+
+        if length != 'full':
+            if not src.utils.length_ok(length):
+                return handle_error(bot, update, error_message='could not extract length from given input')
 
         bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
         # remove previous messages
@@ -225,9 +246,7 @@ def MainConversationHandler():
         try:
             filename = src.utils.get_download(chat_data['url'], chat_data['ext'])
         except youtube_dl.utils.DownloadError as e:
-            update.message.reply_text( 
-                '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['ext'], parse_mode=ParseMode.HTML)
-            return ConversationHandler.END
+            return handle_error(bot, update, error_message='failed to download audio as .%s' % chat_data['ext'])
 
 
         # update status message
@@ -237,8 +256,14 @@ def MainConversationHandler():
 
 
         if not src.utils.size_ok(filename):
-            update.message.reply_text('<strong>Error:</strong> <i>The audio file is too large (max. 50MB).</i>', parse_mode=ParseMode.HTML)
+            """ File NOT OK """
+            # remove please wait message
+            bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
+            # remove tmp file from disk
+            src.utils.remove_file(filename)
+            return handle_error(bot, update, error_message='The audio file is too large (max. 50MB)')
         else:
+            """ File OK """
             # open audio file for transfer    
             try:
                 with open(filename, 'rb') as audio:
@@ -246,9 +271,7 @@ def MainConversationHandler():
                     bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
                     log.info('Finished transferring file %s' % filename)
             except FileNotFoundError as e:
-                    update.message.reply_text(
-                        '<strong>Error:</strong> <i>Failed to download audio as %s.</i>' % chat_data['ext'], parse_mode=ParseMode.HTML)
-                    return ConversationHandler.END
+                    return handle_error(bot, update, error_message='failed to send audio as .%s' % chat_data['ext'])
 
         # add download to history
         src.history.add_history(chat_data['url'])

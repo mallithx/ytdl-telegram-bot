@@ -28,6 +28,9 @@ def size_ok(filename):
     log.debug('File %s has a size of %d' % (filename, size))
     return size <= (1024 * 1024 * 50) # 50MB
 
+def length_ok(length):
+    return False
+
 def get_info(url):
     opts = {
         'logger': logging.getLogger('youtube-dl'),
