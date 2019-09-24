@@ -146,11 +146,11 @@ def MainConversationHandler():
             chat_id=update.message.chat_id, 
             text='<strong>%(title)-70s</strong>\n<i>by %(performer)s</i>' % chat_data['metadata'],
             parse_mode=ParseMode.HTML,
-            reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True))
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True))
 
         reply = update.message.reply_text(
             text='<i>** choose format **</i>', 
-            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True))
+            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True))
 
         chat_data['url'] = url
         chat_data['info_dict'] = info_dict
@@ -183,7 +183,7 @@ def MainConversationHandler():
 
         reply = update.message.reply_text(
             '<i>** select start / end ** { HH:MM:SS-HH:MM:SS }</i>', 
-            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True))
+            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True))
 
         chat_data['ext'] = ext
         chat_data['last_message_id'] = reply.message_id
@@ -218,7 +218,7 @@ def MainConversationHandler():
 
         reply = update.message.reply_text(
             '<i>** please confirm **</i>', 
-            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True))
+            parse_mode=ParseMode.HTML, reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True))
 
         chat_data['length'] = length
         chat_data['last_message_id'] = reply.message_id
