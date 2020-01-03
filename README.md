@@ -2,7 +2,7 @@
 
 ## Audio Downloader - Telegram Bot
 
-Python based Telegram Bot that serves audio files from several web sources e.g. YouTube and Soundcloud. 
+Python based Telegram Bot that serves audio files from several web sources e.g. YouTube and SoundCloud. 
 Uses **_youtube-dl_** and **_python-telegram-bot_**. In the future this Bot should be able to convert and cut the audio 
 stream to a choosen format and length.
 
@@ -22,9 +22,10 @@ pip install youtube_dl
 ```
 
 #### **3. Set Bot-Token**
+Request bot token from @BotFather. 
 Modify **_config_template.py_** and rename to **_config.py_**.
 
 ## Run Application
 ```
-python3 run.py
+python3 run.py [-h]
 ```
