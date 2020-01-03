@@ -59,13 +59,20 @@ def get_download(url, ext, progress_hooks=[]):
         }]
     }
 
+    filename = 'tmp_audio.%s' % ext
+
+    # WORKAROUND for SoundCloud
+    if 'soundcloud' in url:
+        opts.pop('postprocessors', None)
+        filename = 'tmp_audio'
+
     # load audio information
     with youtube_dl.YoutubeDL(opts) as ydl:
         log.debug('Downloading with opts:\n%r' % opts)
         ydl.download([url])
-        filename = 'tmp_audio.%s' % ext
         log.info('Downloaded file %s' % filename)
-        return filename
+
+    return filename
 
 def remove_file(filename):
     try:
