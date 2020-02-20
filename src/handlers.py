@@ -14,9 +14,13 @@ import youtube_dl
 """ Local modules """
 import src.utils
 import src.history
+import config
 
 log = logging.getLogger(__name__)
 
+
+# Constants
+YT_URL_PLAYLIST_ATTR = "&list="
 
 
 def StartCommandHandler():
@@ -99,15 +103,27 @@ def MainConversationHandler():
 
         return ConversationHandler.END
 
-    def handle_error(bot, update, last_message_id=None, error_message=None):
+    def handle_error(bot, update, last_message_id=None, error_message=None, url=None):
 
         chat_id = update.message.chat_id
         msg_id = update.message.message_id
 
+        log.info('A user got "%s" error by using "%s" as input' % (error_message, url))
+
         if error_message is None:
             error_message = 'An unspecified error occured! :('
 
-        bot.send_message(chat_id=chat_id, text='<strong>error:</strong> <i>%s</i>' % error_message, parse_mode=ParseMode.HTML)
+        report_data = url
+        if len(report_data) > 64: # 64 is upper limit of the lib
+            log.warn('Need to cut report data from %d to 64 bytes before sending' % len(report_data))
+            report_data = report_data[:64]  # cut after 64 bytes
+
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("report this issue ->", callback_data=report_data)]])
+
+        if not config.SERVICE_ACCOUNT_CHAT_ID:
+            reply_markup = []
+
+        bot.send_message(chat_id=chat_id, text='<strong>error:</strong> <i>%s</i>' % error_message, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
         #bot.delete_message(chat_id=chat_id, message_id=msg_id)
 
         if last_message_id:
@@ -118,11 +134,21 @@ def MainConversationHandler():
     def handle_cancel(update, context):
         return handle_abort(context.bot, update)
 
+    def handle_query_callbacks(bot, update):
+        query = update.callback_query
+        
+        bot.send_message(chat_id=config.SERVICE_ACCOUNT_CHAT_ID, text='Some user reported an issue with url="%s"' % query.data, parse_mode=ParseMode.HTML)
+        bot.send_message(chat_id=query.message.chat_id, text=u'\U0001F44D', parse_mode=ParseMode.HTML)
+
 
     def handle_incoming_url(bot, update, chat_data):
         """ Handle incoming url """
         url = src.utils.parse_url(update.message.text)
         log.info('Incoming url "%s"' % url)
+
+        # remove playlist information from url
+        if YT_URL_PLAYLIST_ATTR in url:
+            url = url[:url.index(YT_URL_PLAYLIST_ATTR)]
 
         bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
 
@@ -136,7 +162,7 @@ def MainConversationHandler():
                 'thumb': info_dict['thumbnail'] if 'thumbnail' in info_dict else '',
             }
         except (youtube_dl.utils.DownloadError, youtube_dl.utils.ExtractorError) as e:
-            return handle_error(bot, update, error_message='given url is invalid or from an unsupported source')
+            return handle_error(bot, update, error_message='given url is invalid or from an unsupported source', url=url)
 
 
         # create format keyboard
@@ -202,7 +228,7 @@ def MainConversationHandler():
 
         if length != 'full':
             if not src.utils.length_ok(length):
-                return handle_error(bot, update, error_message='could not extract length from given input')
+                return handle_error(bot, update, error_message='could not extract length from given input', url=chat_data['url'])
 
         bot.send_chat_action(update.message.chat_id, action=ChatAction.TYPING)
         # remove previous messages
@@ -246,7 +272,7 @@ def MainConversationHandler():
         try:
             filename = src.utils.get_download(chat_data['url'], chat_data['ext'])
         except youtube_dl.utils.DownloadError as e:
-            return handle_error(bot, update, error_message='failed to download audio as .%s' % chat_data['ext'])
+            return handle_error(bot, update, error_message='failed to download audio as .%s' % chat_data['ext'], url=chat_data['url'])
 
 
         # update status message
@@ -261,7 +287,7 @@ def MainConversationHandler():
             bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
             # remove tmp file from disk
             src.utils.remove_file(filename)
-            return handle_error(bot, update, error_message='The audio file is too large (max. 50MB)')
+            return handle_error(bot, update, error_message='The audio file is too large (max. 50MB)', url=chat_data['url'])
         else:
             """ File OK """
             # open audio file for transfer    
@@ -271,7 +297,7 @@ def MainConversationHandler():
                     bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
                     log.info('Finished transferring file %s' % filename)
             except FileNotFoundError as e:
-                    return handle_error(bot, update, error_message='failed to send audio as .%s' % chat_data['ext'])
+                    return handle_error(bot, update, error_message='failed to send audio as .%s' % chat_data['ext'], url=chat_data['url'])
 
         # add download to history
         src.history.add_history(chat_data['url'])
@@ -285,13 +311,13 @@ def MainConversationHandler():
 
 
     return ConversationHandler(
-        entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
+        entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)],
 
         states={
-            CHOOSE_FORMAT: [MessageHandler(Filters.all, handle_format_selection, pass_chat_data=True)],
-            CHOOSE_LENGTH: [MessageHandler(Filters.all, handle_length_selection, pass_chat_data=True)],
+            CHOOSE_FORMAT: [MessageHandler(Filters.all, handle_format_selection, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)],
+            CHOOSE_LENGTH: [MessageHandler(Filters.all, handle_length_selection, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)],
 
-            CHECKOUT: [MessageHandler(Filters.all, handle_checkout, pass_chat_data=True)]
+            CHECKOUT: [MessageHandler(Filters.all, handle_checkout, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)]
         },
 
         fallbacks=[CommandHandler('cancel', handle_cancel)],
