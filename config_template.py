@@ -8,11 +8,16 @@
 """ Standard modules """
 import logging
 
-""" Bot Token """
+""" (MANDATORY) Bot Token """
 BOT_TOKEN = ''
 
-""" Telegram chat id to receive error reports from users """
+""" (OPTIONAL) Development """
+LOG_LEVEL = logging.DEBUG
+
+""" (OPTIONAL) Telegram chat id to receive error reports from users """
 SERVICE_ACCOUNT_CHAT_ID = ''
 
-""" Development """
-LOG_LEVEL = logging.DEBUG
+""" (OPTIONAL) Testing """
+TEST_API_ID = 12345
+TEST_API_HASH = 'get it from https://my.telegram.org'
+TEST_BOT_USERNAME = 'my_bot_username'

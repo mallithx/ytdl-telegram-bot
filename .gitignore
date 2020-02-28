@@ -1,6 +1,9 @@
 # ingore application .history file
 .history
 
+# telephon .session(s)
+*.session
+
 # tmp file directory
 tmp/
 tmp_audio
