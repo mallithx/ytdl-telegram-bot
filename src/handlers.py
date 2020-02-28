@@ -10,6 +10,7 @@ import os
 from telegram import *
 from telegram.ext import * 
 import youtube_dl
+from pydub import AudioSegment
 
 """ Local modules """
 import src.utils
@@ -270,9 +271,22 @@ def MainConversationHandler():
 
         # download audio
         try:
-            filename = src.utils.get_download(chat_data['url'], chat_data['ext'])
+            filename = src.utils.get_download(chat_data['url'], chat_data['ext'], chat_data['length'])
         except youtube_dl.utils.DownloadError as e:
             return handle_error(bot, update, error_message='failed to download audio as .%s' % chat_data['ext'], url=chat_data['url'])
+
+
+        # (OPTIONAL) cut audio
+        if chat_data['length'] != 'full':
+            length = chat_data['length'].split('-')
+            start = [int(x) for x in length[0].split(':')]
+            end = [int(x) for x in length[1].split(':')]
+
+
+            log.debug('Try to cut file "%s" to %s' % (filename, chat_data['length']))
+            song = AudioSegment.from_mp3(filename)
+            extract = song[src.utils.length_to_msec(length[0]):src.utils.length_to_msec(length[1])]
+            extract.export(filename, format="mp3")
 
 
         # update status message

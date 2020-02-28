@@ -29,7 +29,19 @@ def size_ok(filename):
     return size <= (1024 * 1024 * 50) # 50MB
 
 def length_ok(length):
+    match = re.search('^[0-9]{2}:[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}:[0-9]{2}$', length)
+    if match:
+        l = length.split('-')
+        if length_to_msec(l[1]) < length_to_msec(l[0]):
+            return False
+        else:
+            return True
+
     return False
+
+def length_to_msec(length):
+    v = [int(x) for x in length.split(':')]
+    return v[0]*60*60*1000 + v[1]*60*1000 + v[2]*1000
 
 def get_info(url):
     opts = {
@@ -44,7 +56,7 @@ def get_info(url):
 
     return info_dict
 
-def get_download(url, ext, progress_hooks=[]):
+def get_download(url, ext, length, progress_hooks=[]):
     opts = {
         'logger': logging.getLogger('youtube-dl'),
         'outtmpl': 'tmp_audio',
