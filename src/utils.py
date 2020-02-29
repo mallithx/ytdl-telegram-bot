@@ -4,9 +4,13 @@
 import logging
 import re
 import os
+import uuid
+import glob
 
 """ 3th party modules """
 import youtube_dl
+
+WORKDIR = 'tmp'
 
 log = logging.getLogger(__name__)
 
@@ -56,27 +60,19 @@ def get_info(url):
 
     return info_dict
 
-def get_download(url, ext, length, progress_hooks=[]):
+def get_download(url, preferred_format, length, progress_hooks=[]):
+    if preferred_format == 'video': preferred_format = 'bestvideo+bestaudio/best'
+    elif preferred_format == 'audio': preferred_format = 'bestaudio/best'
+
+    filename = os.path.join(WORKDIR, str(uuid.uuid4()))
     opts = {
         'logger': logging.getLogger('youtube-dl'),
-        'outtmpl': 'tmp_audio',
+        'outtmpl': filename,
         'verbose': True,
-        'format': 'bestvideo+bestaudio/best',
+        'format': preferred_format,
         'forceid': True,
-        'progress_hooks': progress_hooks,
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': ext,
-            'preferredquality': '192',
-        }]
+        'progress_hooks': progress_hooks
     }
-
-    filename = 'tmp_audio.%s' % ext
-
-    # WORKAROUND for SoundCloud
-    if 'soundcloud' in url:
-        opts.pop('postprocessors', None)
-        filename = 'tmp_audio'
 
     # load audio information
     with youtube_dl.YoutubeDL(opts) as ydl:
@@ -84,7 +80,8 @@ def get_download(url, ext, length, progress_hooks=[]):
         ydl.download([url])
         log.info('Downloaded file %s' % filename)
 
-    return filename
+    filename = glob.glob(filename + '*') # workaround for unexpected extensions amend by youtube-dl
+    return filename[0]
 
 def remove_file(filename):
     try:

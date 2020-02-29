@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """ Standard modules """
 import logging
+import os
 
 """ 3th party modules """
 from telegram import *
@@ -13,12 +14,16 @@ import src.handlers
 
 log = logging.getLogger(__name__)
 
+WORKDIR = 'tmp'
 
 class TelegramAudioDownloadBot:
 
     def __init__(self, token):
         self.updater = Updater(token=token, workers=4)
         self.dispatcher = self.updater.dispatcher
+
+        # Create and change to work dir
+        if not os.path.isdir(WORKDIR): log.info('Creating working direcory "%s"' % WORKDIR); os.mkdir(WORKDIR)
 
         self.__register_handlers()
         log.info('Initialize Telegram Bot...DONE. switching to idle mode.')

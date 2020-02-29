@@ -115,11 +115,14 @@ def MainConversationHandler():
             error_message = 'An unspecified error occured! :('
 
         report_data = url
-        if len(report_data) > 64: # 64 is upper limit of the lib
-            log.warn('Need to cut report data from %d to 64 bytes before sending' % len(report_data))
-            report_data = report_data[:64]  # cut after 64 bytes
+        if report_data:
+            if len(report_data) > 64: # 64 is upper limit of the lib
+                log.warn('Need to cut report data from %d to 64 bytes before sending' % len(report_data))
+                report_data = report_data[:64]  # cut after 64 bytes
 
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("report this issue ->", callback_data=report_data)]])
+            reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("report this issue ->", callback_data=report_data)]])
+        else:
+            reply_markup = []
 
         if not config.SERVICE_ACCOUNT_CHAT_ID:
             reply_markup = []
@@ -167,7 +170,7 @@ def MainConversationHandler():
 
 
         # create format keyboard
-        keyboard = [['wav', 'mp3'], ['abort']]
+        keyboard = [['video', 'audio'], ['abort']]
 
         bot.send_message(
             chat_id=update.message.chat_id, 
@@ -250,6 +253,9 @@ def MainConversationHandler():
         chat_data['length'] = length
         chat_data['last_message_id'] = reply.message_id
 
+        if chat_data['ext'] == 'video' and chat_data['length'] != 'full':
+            return handle_error(bot, update, error_message='currently it is not possible to cut video files')
+
         return CHECKOUT
 
 
@@ -284,10 +290,9 @@ def MainConversationHandler():
 
 
             log.debug('Try to cut file "%s" to %s' % (filename, chat_data['length']))
-            song = AudioSegment.from_mp3(filename)
+            song = AudioSegment.from_file(filename)
             extract = song[src.utils.length_to_msec(length[0]):src.utils.length_to_msec(length[1])]
             extract.export(filename, format="mp3")
-
 
         # update status message
         bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
@@ -306,12 +311,15 @@ def MainConversationHandler():
             """ File OK """
             # open audio file for transfer    
             try:
-                with open(filename, 'rb') as audio:
+                with open(filename, 'rb') as fd:
                     log.info('Start transferring file %s to client' % filename)
-                    bot.send_audio(chat_id=chat_id, audio=audio, timeout=180, **chat_data['metadata'])
+                    if 'video' in chat_data['ext']:
+                        bot.send_video(chat_id=chat_id, video=fd, timeout=180, **chat_data['metadata'])
+                    else:
+                        bot.send_audio(chat_id=chat_id, audio=fd, timeout=180, **chat_data['metadata'])
                     log.info('Finished transferring file %s' % filename)
             except FileNotFoundError as e:
-                    return handle_error(bot, update, error_message='failed to send audio as .%s' % chat_data['ext'], url=chat_data['url'])
+                    return handle_error(bot, update, error_message='failed to send file (%s) from %s' % chat_data['ext'], url=chat_data['url'])
 
         # add download to history
         src.history.add_history(chat_data['url'])
