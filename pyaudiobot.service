@@ -1,0 +1,11 @@
+[Unit]
+Description=Python Youtube Download Telegram Bot
+After=multi-user.target
+
+[Service]
+RestartSec=10
+Restart=always
+ExecStart=/root/python-telegram-audio-downloader/run.py
+
+[Install]
+WantedBy=multi-user.target
