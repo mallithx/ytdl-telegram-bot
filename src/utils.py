@@ -30,7 +30,7 @@ def parse_url(msg):
 def size_ok(filename):
     size = os.path.getsize(filename)
     log.debug('File %s has a size of %d' % (filename, size))
-    return size <= (1024 * 1024 * 2000) # 2000MB or 2GB
+    return size <= (1024 * 1024 * 50) # 50MB
 
 def length_ok(length):
     match = re.search('^[0-9]{2}:[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}:[0-9]{2}$', length)

@@ -28,7 +28,7 @@ def StartCommandHandler():
 
     def handler(bot, update):
         update.message.reply_text(
-            text='<strong>Audio Downloader</strong>\n<i>v2019.06.19</i>\n\n<strong>Share a link or enter a URL to download audio or video files.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
+            text='<strong>Audio Downloader</strong>\n<i>v2019.06.19</i>\nhttps://github.com/pthuencher/python-telegram-bot-audio-downloader\n\n<strong>Share a link or enter a URL to download audio file.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
             parse_mode=ParseMode.HTML)
 
     return CommandHandler('start', handler)
@@ -166,7 +166,7 @@ def MainConversationHandler():
                 'thumb': info_dict['thumbnail'] if 'thumbnail' in info_dict else '',
             }
         except (youtube_dl.utils.DownloadError, youtube_dl.utils.ExtractorError) as e:
-            return handle_error(bot, update, error_message='"%s" is not a valid url or from an unsupported source' % url, url=url)
+            return handle_error(bot, update, error_message='given url is invalid or from an unsupported source', url=url)
 
 
         # create format keyboard
@@ -296,7 +296,7 @@ def MainConversationHandler():
 
         # update status message
         bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
-        status_msg = bot.send_message(chat_id=chat_id, text='<i>.. sending %s (2/2) ..</i>' % chat_data['ext'], parse_mode=ParseMode.HTML)
+        status_msg = bot.send_message(chat_id=chat_id, text='<i>.. sending audio (2/2) ..</i>', parse_mode=ParseMode.HTML)
         bot.send_chat_action(update.message.chat_id, action=ChatAction.UPLOAD_AUDIO)
 
 
@@ -306,7 +306,7 @@ def MainConversationHandler():
             bot.delete_message(chat_id=chat_id, message_id=status_msg.message_id)
             # remove tmp file from disk
             src.utils.remove_file(filename)
-            return handle_error(bot, update, error_message='The audio file is too large (max. 2GB)', url=chat_data['url'])
+            return handle_error(bot, update, error_message='The audio file is too large (max. 50MB)', url=chat_data['url'])
         else:
             """ File OK """
             # open audio file for transfer    
