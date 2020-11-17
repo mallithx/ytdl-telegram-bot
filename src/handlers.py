@@ -5,6 +5,7 @@ import subprocess
 import logging
 import datetime
 import os
+from functools import partial
 
 """ 3th party modules """
 from telegram import *
@@ -16,6 +17,7 @@ from pydub import AudioSegment
 import src.utils
 import src.history
 import config
+import whitelist
 
 log = logging.getLogger(__name__)
 
@@ -24,9 +26,22 @@ log = logging.getLogger(__name__)
 YT_URL_PLAYLIST_ATTR = "&list="
 
 
+def authorize(update):
+    if str(update.effective_user.id) in whitelist.userids:
+        return True
+    else:
+        log.warning("Unauthorized access from: " + str(update.effective_user))
+        # send msg to unauthorized users
+        update.message.reply_text(text="Error: You are not authorized")
+
+
+
 def StartCommandHandler():
 
     def handler(bot, update):
+        if not authorize(update):
+            return
+        
         update.message.reply_text(
             text='<strong>Audio Downloader</strong>\n<i>v2019.06.19</i>\nhttps://github.com/pthuencher/python-telegram-bot-audio-downloader\n\n<strong>Share a link or enter a URL to download audio file.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
             parse_mode=ParseMode.HTML)
@@ -36,6 +51,9 @@ def StartCommandHandler():
 def VersionCommandHandler():
 
     def handler(bot, update):
+        if not authorize(update):
+            return
+        
         try:
             resp = subprocess.check_output(['youtube-dl', '--version'])
             version = resp.decode('utf-8')
@@ -52,6 +70,9 @@ def VersionCommandHandler():
 def UpdateCommandHandler():
 
     def handler(bot, update):
+        if not authorize(update):
+            return
+        
         try:
             resp = subprocess.check_output(['pip', 'install', 'youtube-dl', '--upgrade'])
             resp = resp.decode('utf-8')
@@ -69,6 +90,9 @@ def UpdateCommandHandler():
 def HistoryCommandHandler():
 
     def handler(bot, update):
+        if not authorize(update):
+            return
+        
         history = src.history.get_history()
 
         if history is None:
@@ -146,6 +170,9 @@ def MainConversationHandler():
 
 
     def handle_incoming_url(bot, update, chat_data):
+        if not authorize(update):
+            return
+        
         """ Handle incoming url """
         url = src.utils.parse_url(update.message.text)
         log.info('Incoming url "%s"' % url)
@@ -261,6 +288,9 @@ def MainConversationHandler():
 
 
     def handle_checkout(bot, update, chat_data):
+        if not authorize(update):
+            return
+        
 
         confirmed = update.message.text
         msg = update.message
