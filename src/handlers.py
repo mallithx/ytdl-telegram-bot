@@ -5,6 +5,7 @@ import subprocess
 import logging
 import datetime
 import os
+import importlib
 from functools import partial
 
 """ 3th party modules """
@@ -27,14 +28,28 @@ YT_URL_PLAYLIST_ATTR = "&list="
 
 
 def authorize(update):
-    if str(update.effective_user.id) in whitelist.userids:
+    importlib.reload(whitelist)
+    userid = str(update.effective_user.id)
+    if userid in whitelist.userids:
         return True
     else:
         log.warning("Unauthorized access from: " + str(update.effective_user))
         # send msg to unauthorized users
-        update.message.reply_text(text="Error: You are not authorized")
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Request Access", callback_data=str(update.effective_user.name) + " (" + userid + ")")]])
+        update.message.reply_text(
+           text="<b>Error: not authorized.</b> You can request access by clicking the button below. ", 
+           parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
+def UnauthorizedHandler():
 
+    def handler(bot, update):
+        """ This function handels the "Request Access" button.  """
+        query = update.callback_query
+        
+        bot.send_message(chat_id=config.SERVICE_ACCOUNT_CHAT_ID, text='<b>Access request by </b><i>%s</i>' % query.data, parse_mode=ParseMode.HTML)
+        bot.send_message(chat_id=query.message.chat_id, text="<b>Request send.</b>", parse_mode=ParseMode.HTML)
+
+    return CallbackQueryHandler(handler)
 
 def StartCommandHandler():
 
@@ -138,20 +153,7 @@ def MainConversationHandler():
         if error_message is None:
             error_message = 'An unspecified error occured! :('
 
-        report_data = url
-        if report_data:
-            if len(report_data) > 64: # 64 is upper limit of the lib
-                log.warn('Need to cut report data from %d to 64 bytes before sending' % len(report_data))
-                report_data = report_data[:64]  # cut after 64 bytes
-
-            reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("report this issue ->", callback_data=report_data)]])
-        else:
-            reply_markup = []
-
-        if not config.SERVICE_ACCOUNT_CHAT_ID:
-            reply_markup = []
-
-        bot.send_message(chat_id=chat_id, text='<strong>error:</strong> <i>%s</i>' % error_message, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+        bot.send_message(chat_id=chat_id, text='<strong>error:</strong> <i>%s</i>' % error_message, parse_mode=ParseMode.HTML) #, reply_markup=reply_markup)
         #bot.delete_message(chat_id=chat_id, message_id=msg_id)
 
         if last_message_id:
@@ -161,12 +163,6 @@ def MainConversationHandler():
 
     def handle_cancel(update, context):
         return handle_abort(context.bot, update)
-
-    def handle_query_callbacks(bot, update):
-        query = update.callback_query
-        
-        bot.send_message(chat_id=config.SERVICE_ACCOUNT_CHAT_ID, text='Some user reported an issue with url="%s"' % query.data, parse_mode=ParseMode.HTML)
-        bot.send_message(chat_id=query.message.chat_id, text=u'\U0001F44D', parse_mode=ParseMode.HTML)
 
 
     def handle_incoming_url(bot, update, chat_data):
@@ -363,13 +359,13 @@ def MainConversationHandler():
 
 
     return ConversationHandler(
-        entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)],
+        entry_points=[MessageHandler(Filters.all, handle_incoming_url, pass_chat_data=True)],
 
         states={
-            CHOOSE_FORMAT: [MessageHandler(Filters.all, handle_format_selection, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)],
-            CHOOSE_LENGTH: [MessageHandler(Filters.all, handle_length_selection, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)],
+            CHOOSE_FORMAT: [MessageHandler(Filters.all, handle_format_selection, pass_chat_data=True)],
+            CHOOSE_LENGTH: [MessageHandler(Filters.all, handle_length_selection, pass_chat_data=True)],
 
-            CHECKOUT: [MessageHandler(Filters.all, handle_checkout, pass_chat_data=True), CallbackQueryHandler(handle_query_callbacks)]
+            CHECKOUT: [MessageHandler(Filters.all, handle_checkout, pass_chat_data=True)]
         },
 
         fallbacks=[CommandHandler('cancel', handle_cancel)],

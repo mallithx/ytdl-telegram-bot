@@ -38,6 +38,8 @@ class TelegramAudioDownloadBot:
     def __register_handlers(self):
         # Error handler
         self.dispatcher.add_error_handler(src.error.handler)
+        # Access Request Handler
+        self.dispatcher.add_handler(src.handlers.UnauthorizedHandler())
         # Command handlers
         self.dispatcher.add_handler(src.handlers.StartCommandHandler())
         self.dispatcher.add_handler(src.handlers.VersionCommandHandler())
