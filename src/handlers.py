@@ -32,7 +32,12 @@ def authorize(update, admin_only=False):
     userid = str(update.effective_user.id)
     whitelist = src.whitelist.get()
 
-    if whitelist and userid in whitelist:
+    if admin_only:
+        if userid == config.SERVICE_ACCOUNT_CHAT_ID:
+            return True
+        else:
+            return False
+    elif whitelist and userid in whitelist:
         return True
     else:
         log.warning("Unauthorized access from: " + str(update.effective_user))
@@ -62,7 +67,7 @@ def StartCommandHandler():
             return
         
         update.message.reply_text(
-            text='<strong>Audio Downloader</strong>\n<i>v2019.06.19</i>\nhttps://github.com/pthuencher/python-telegram-bot-audio-downloader\n\n<strong>Share a link or enter a URL to download audio file.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
+            text='<strong>Audio Downloader</strong>\n<i>v2020.11.18</i>\nhttps://github.com/pthuencher/python-telegram-bot-audio-downloader\n\n<strong>Share a link or enter a URL to download audio file.</strong>\n\nyoutube.com \u2714\nsoundcloud.com \u2714\n\nUse /update to fetch most recent youtube-dl /version.', 
             parse_mode=ParseMode.HTML)
 
     return CommandHandler('start', handler)
