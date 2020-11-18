@@ -5,6 +5,7 @@ After=multi-user.target
 [Service]
 RestartSec=10
 Restart=always
+WorkingDirectory=/root/python-telegram-audio-downloader
 ExecStart=/root/python-telegram-audio-downloader/run.py -d
 
 [Install]

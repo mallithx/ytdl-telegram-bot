@@ -17,8 +17,9 @@ from pydub import AudioSegment
 """ Local modules """
 import src.utils
 import src.history
+import src.whitelist
 import config
-import whitelist
+import os
 
 log = logging.getLogger(__name__)
 
@@ -27,18 +28,21 @@ log = logging.getLogger(__name__)
 YT_URL_PLAYLIST_ATTR = "&list="
 
 
-def authorize(update):
-    importlib.reload(whitelist)
+def authorize(update, admin_only=False):
     userid = str(update.effective_user.id)
-    if userid in whitelist.userids:
+    whitelist = src.whitelist.get()
+
+    if whitelist and userid in whitelist:
         return True
     else:
         log.warning("Unauthorized access from: " + str(update.effective_user))
         # send msg to unauthorized users
         reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Request Access", callback_data=str(update.effective_user.name) + " (" + userid + ")")]])
         update.message.reply_text(
-           text="<b>Error: not authorized.</b> You can request access by clicking the button below. ", 
-           parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+            text="<b>Error: not authorized.</b>", 
+            parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+    
+    return False
 
 def UnauthorizedHandler():
 
@@ -122,6 +126,22 @@ def HistoryCommandHandler():
 
     return CommandHandler('history', handler)
 
+
+def WhitelistCommandHandler():
+
+    def handler(bot, update):
+        if not authorize(update, admin_only=True):
+            return
+        
+        uid = update.message.text[11:]
+        if not uid.strip():
+           update.message.reply_text(text=str(src.whitelist.get()))
+        else:
+            src.whitelist.add(update.message.text[11:]) # trim /whitelist from message
+            update.message.reply_text(text='<i>done.</i>', parse_mode=ParseMode.HTML)
+
+
+    return CommandHandler('whitelist', handler)
 
 
 def MainConversationHandler():

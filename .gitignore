@@ -11,7 +11,7 @@ tmp_audio.*
 
 # Config File
 config.py
-whitelist.py
+whitelist.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
