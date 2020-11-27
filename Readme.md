@@ -1,9 +1,9 @@
 <img src="preview.jpg" align="right" width="30%">
 
-## Audio Downloader - Telegram Bot
+## telegram-ytdl-bot
 
-Python based Telegram Bot that serves audio files from several web sources e.g. YouTube and SoundCloud. 
-Uses **_youtube-dl_** and **_python-telegram-bot_**. In the future this Bot should be able to convert and cut the audio 
+This Telegram bot serves audio files from several sources e.g. YouTube and SoundCloud. 
+Uses **_youtube-dl_** and **_python-telegram-bot_**. In the future this bot should be able to convert and cut the audio 
 stream to a choosen format and length.
 
 
