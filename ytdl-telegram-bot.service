@@ -1,0 +1,12 @@
+[Unit]
+Description= youtube-dl - Telegram Bot
+After=multi-user.target
+
+[Service]
+RestartSec=10
+Restart=always
+WorkingDirectory=/root/ytdl-telegram-bot
+ExecStart=/root/ytdl-telegram-bot/run.py -d
+
+[Install]
+WantedBy=multi-user.target
