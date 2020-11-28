@@ -29,3 +29,11 @@ Modify **_config_template.py_** and rename to **_config.py_**.
 ```
 python3 run.py [-h]
 ```
+or
+```
+cp ytdl-telegram-bot.service /etc/systemd/system/
+systemctl daemon-reload
+
+systemctl start ytdl-telegram-bot.service
+systemctl status ytdl-telegram-bot.service
+```
