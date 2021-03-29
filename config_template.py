@@ -9,7 +9,7 @@
 import logging
 
 """ (MANDATORY) Bot Token """
-BOT_TOKEN = ''
+BOT_TOKEN = '1747569253:AAGjDmjuUE1jDmmDSaJxM1IV-Yvlxoamvcs'
 
 """ (OPTIONAL) Development """
 LOG_LEVEL = logging.DEBUG
