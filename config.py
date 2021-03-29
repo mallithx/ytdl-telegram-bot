@@ -9,7 +9,7 @@
 import logging
 
 """ (MANDATORY) Bot Token """
-BOT_TOKEN = ''
+BOT_TOKEN = '1747569253:AAGjDmjuUE1jDmmDSaJxM1IV-Yvlxoamvcs'
 
 """ (OPTIONAL) Development """
 LOG_LEVEL = logging.DEBUG
@@ -18,6 +18,6 @@ LOG_LEVEL = logging.DEBUG
 SERVICE_ACCOUNT_CHAT_ID = ''
 
 """ (OPTIONAL) Testing """
-TEST_API_ID = 12345
-TEST_API_HASH = 'get it from https://my.telegram.org'
-TEST_BOT_USERNAME = 'my_bot_username'
+TEST_API_ID = 3048430
+TEST_API_HASH = 'd110de030be2d28164c02b13c0a311f7'
+TEST_BOT_USERNAME = '@ytdlprox_bot'
